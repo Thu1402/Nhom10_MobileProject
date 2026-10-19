@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <color name="cream">#FFFDF7</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="ink">#20231F</color>
+    <color name="muted">#777B73</color>
+    <color name="line">#E9E9DF</color>
+    <color name="lime">#DDEB91</color>
+    <color name="lime_strong">#C5E86C</color>
+    <color name="violet">#6654C8</color>
+    <color name="violet_dark">#5140A8</color>
+    <color name="violet_soft">#F0EDFF</color>
+    <color name="mint">#DBF3DC</color>
+    <color name="peach">#FFE2CE</color>
+    <color name="danger">#D84F57</color>
 </resources>
