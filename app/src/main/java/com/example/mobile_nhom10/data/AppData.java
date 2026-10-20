@@ -10,16 +10,16 @@ public final class AppData {
 
     public static final List<Place> PLACES = new ArrayList<>(Arrays.asList(
             new Place(
-                    "Nhà của Mây",
-                    "Cà phê",
-                    "Hẻm 11, Khe Sanh, Đà Lạt",
+                    "Hồ Xanh Mây",
+                    "Thiên nhiên",
+                    "Đồi Thông, Đà Lạt",
                     "2,4 km",
                     "https://images.unsplash.com/photo-1759476313158-5f5064f66b8a?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=84&w=1080"
             ),
             new Place(
-                    "Hồ Tuyền Lâm",
-                    "Thiên nhiên",
-                    "Phường 4, Đà Lạt",
+                    "Nép Coffee",
+                    "Cà phê",
+                    "12 Trần Phú, Đà Lạt",
                     "850 m",
                     "https://images.unsplash.com/photo-1778653202386-06d020d905df?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=84&w=1080"
             ),

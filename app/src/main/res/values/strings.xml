@@ -1,3 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Mobile_Nhom10</string>
+    <string name="app_name">Lime Places</string>
+    <string name="nav_home">Trang chủ</string>
+    <string name="nav_map">Bản đồ</string>
+    <string name="nav_add">Thêm</string>
+    <string name="nav_friends">Bạn bè</string>
+    <string name="nav_profile">Hồ sơ</string>
+    <string name="place_image">Ảnh địa điểm</string>
 </resources>
