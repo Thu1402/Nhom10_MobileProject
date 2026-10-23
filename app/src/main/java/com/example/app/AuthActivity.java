@@ -11,8 +11,7 @@ import android.widget.Toast;
 import android.widget.FrameLayout;
 import android.view.Gravity;
 import androidx.appcompat.app.AppCompatActivity;
-import com.example.app.data.AppData;
-import com.example.app.data.FirebaseSession;
+import com.example.app.App;
 import com.example.app.screens.HomeActivity;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.AuthCredential;
@@ -89,6 +88,7 @@ public class AuthActivity extends AppCompatActivity {
         subtitle.setText(enabled
                 ? "Thông tin tài khoản"
                 : "Tên đăng nhập hoặc số điện thoại.");
+        subtitle.setVisibility(enabled ? View.VISIBLE : View.GONE);
         submitButton.setText(enabled ? "Đăng ký" : "Đăng nhập");
         togglePrompt.setText(enabled ? "Đã có tài khoản?" : "Chưa có tài khoản?");
         toggleButton.setText(enabled ? "Đăng nhập" : "Đăng ký");
@@ -117,7 +117,7 @@ public class AuthActivity extends AppCompatActivity {
         if (looksLikePhone(identifier)) {
             String digits = canonicalPhone(identifier);
             setSubmitting(true, "Đang tìm tài khoản...");
-            FirebaseSession.ensureSignedIn(this, new FirebaseSession.Callback() {
+            App.ensureSignedIn(this, new App.SessionCallback() {
                 @Override public void onSuccess() {
                     FirebaseFirestore.getInstance().collection("authIdentifiers")
                             .document(hash("phone:" + digits)).get()
@@ -353,8 +353,8 @@ public class AuthActivity extends AppCompatActivity {
     }
 
     private void openHome() {
-        AppData.PLACES.clear();
-        AppData.SHARED_PLACES.clear();
+        App.PLACES.clear();
+        App.SHARED_PLACES.clear();
         Intent intent = new Intent(this, HomeActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);

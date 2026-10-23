@@ -1,5 +1,6 @@
 package com.example.app.data;
 
+import com.example.app.App;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -28,6 +29,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.UUID;
 import java.io.InputStream;
 import java.io.ByteArrayOutputStream;
@@ -67,12 +70,13 @@ public final class FirebasePlaceRepository {
             callback.onError(new IllegalStateException("Firebase chưa được cấu hình. Thêm google-services.json vào APP/app."));
             return null;
         }
-        ListenerHolder holder = new ListenerHolder();
-        FirebaseSession.ensureSignedIn(context, new FirebaseSession.Callback() {
+        AtomicBoolean removed = new AtomicBoolean();
+        AtomicReference<ListenerRegistration> delegate = new AtomicReference<>();
+        App.ensureSignedIn(context, new App.SessionCallback() {
             @Override public void onSuccess() {
-                if (holder.removed) return;
+                if (removed.get()) return;
                 String ownerUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-                holder.delegate = FirebaseFirestore.getInstance().collection(COLLECTION)
+                ListenerRegistration registration = FirebaseFirestore.getInstance().collection(COLLECTION)
                         .whereEqualTo("ownerUid", ownerUid)
                         .addSnapshotListener((snapshot, error) -> {
                             if (error != null) {
@@ -89,11 +93,16 @@ public final class FirebasePlaceRepository {
                             }
                             callback.onPlaces(places);
                         });
-                if (holder.removed) holder.delegate.remove();
+                delegate.set(registration);
+                if (removed.get()) registration.remove();
             }
             @Override public void onError(Exception error) { callback.onError(error); }
         });
-        return holder;
+        return () -> {
+            removed.set(true);
+            ListenerRegistration registration = delegate.get();
+            if (registration != null) registration.remove();
+        };
     }
 
     /** Loads only places whose IDs are present in the signed-in user's share inbox. */
@@ -102,7 +111,7 @@ public final class FirebasePlaceRepository {
             callback.onError(new IllegalStateException("Firebase chưa được cấu hình."));
             return;
         }
-        FirebaseSession.ensureSignedIn(context, new FirebaseSession.Callback() {
+        App.ensureSignedIn(context, new App.SessionCallback() {
             @Override public void onSuccess() {
                 List<Task<?>> requests = new ArrayList<>();
                 if (ids != null) {
@@ -149,11 +158,12 @@ public final class FirebasePlaceRepository {
             callback.onError(new IllegalStateException("Firebase chưa được cấu hình."));
             return null;
         }
-        ListenerHolder holder = new ListenerHolder();
-        FirebaseSession.ensureSignedIn(context, new FirebaseSession.Callback() {
+        AtomicBoolean removed = new AtomicBoolean();
+        AtomicReference<ListenerRegistration> delegate = new AtomicReference<>();
+        App.ensureSignedIn(context, new App.SessionCallback() {
             @Override public void onSuccess() {
-                if (holder.removed) return;
-                holder.delegate = FirebaseFirestore.getInstance().collection(COLLECTION).document(placeId)
+                if (removed.get()) return;
+                ListenerRegistration registration = FirebaseFirestore.getInstance().collection(COLLECTION).document(placeId)
                         .addSnapshotListener((document, error) -> {
                             if (error != null) callback.onError(error);
                             else if (document == null || !document.exists()) callback.onMissing();
@@ -163,11 +173,16 @@ public final class FirebasePlaceRepository {
                                 else callback.onPlace(place);
                             }
                         });
-                if (holder.removed) holder.delegate.remove();
+                delegate.set(registration);
+                if (removed.get()) registration.remove();
             }
             @Override public void onError(Exception error) { callback.onError(error); }
         });
-        return holder;
+        return () -> {
+            removed.set(true);
+            ListenerRegistration registration = delegate.get();
+            if (registration != null) registration.remove();
+        };
     }
 
     public static void create(Context context, Place place, Uri imageUri, ResultCallback callback) {
@@ -175,7 +190,7 @@ public final class FirebasePlaceRepository {
             callback.onError(new IllegalStateException("Firebase chưa được cấu hình. Thêm google-services.json vào APP/app."));
             return;
         }
-        FirebaseSession.ensureSignedIn(context, new FirebaseSession.Callback() {
+        App.ensureSignedIn(context, new App.SessionCallback() {
             @Override public void onSuccess() {
                 String id = FirebaseFirestore.getInstance().collection(COLLECTION).document().getId();
                 uploadIfSelected(context, id, imageUri, imageUrl -> {
@@ -201,7 +216,7 @@ public final class FirebasePlaceRepository {
             callback.onError(new IllegalStateException("Địa điểm này chưa có mã Firebase."));
             return;
         }
-        FirebaseSession.ensureSignedIn(context, new FirebaseSession.Callback() {
+        App.ensureSignedIn(context, new App.SessionCallback() {
             @Override public void onSuccess() {
                 uploadIfSelected(context, place.id, imageUri, imageUrl -> {
                     Place updated = new Place(place.id, place.ownerId, place.name, place.category, place.address, place.distance,
@@ -304,7 +319,7 @@ public final class FirebasePlaceRepository {
         }, "place-image-firestore-fallback").start();
     }
 
-    private static String compressAsDataUrl(Context context, Uri imageUri) throws Exception {
+    static String compressAsDataUrl(Context context, Uri imageUri) throws Exception {
         BitmapFactory.Options bounds = new BitmapFactory.Options();
         bounds.inJustDecodeBounds = true;
         try (InputStream stream = context.getContentResolver().openInputStream(imageUri)) {
@@ -412,13 +427,4 @@ public final class FirebasePlaceRepository {
         return null;
     }
 
-    private static final class ListenerHolder implements ListenerRegistration {
-        private volatile ListenerRegistration delegate;
-        private volatile boolean removed;
-        @Override public void remove() {
-            removed = true;
-            ListenerRegistration current = delegate;
-            if (current != null) current.remove();
-        }
-    }
 }

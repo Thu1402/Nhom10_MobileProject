@@ -14,7 +14,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.content.res.ColorStateList;
 import com.example.app.BaseNavigationActivity;
 import com.example.app.R;
-import com.example.app.data.AppData;
+import com.example.app.App;
 import com.example.app.data.FirebasePlaceRepository;
 import com.example.app.data.FirebaseShareRepository;
 import com.example.app.model.Place;
@@ -37,7 +37,7 @@ public class HomeActivity extends BaseNavigationActivity {
     private TextInputEditText searchField;
     private ListenerRegistration placesListener;
     private ListenerRegistration sharesListener;
-    private final List<FirebaseShareRepository.SharedPlace> receivedShares = new ArrayList<>();
+    private final List<Place> receivedShares = new ArrayList<>();
     private final List<Place> fallbackPlaces = createFallbackPlaces();
     private String selectedCategory = "Tất cả";
     private boolean placesLoaded;
@@ -73,8 +73,8 @@ public class HomeActivity extends BaseNavigationActivity {
 
         placesListener = FirebasePlaceRepository.listen(this, new FirebasePlaceRepository.PlacesCallback() {
             @Override public void onPlaces(List<Place> places) {
-                AppData.PLACES.clear();
-                AppData.PLACES.addAll(places);
+                App.PLACES.clear();
+                App.PLACES.addAll(places);
                 placesLoaded = true;
                 placesLoadFailed = false;
                 renderResults();
@@ -90,17 +90,17 @@ public class HomeActivity extends BaseNavigationActivity {
         });
         sharesListener = FirebaseShareRepository.listenReceived(this,
                 new FirebaseShareRepository.ReceivedCallback() {
-                    @Override public void onResult(List<FirebaseShareRepository.SharedPlace> shares) {
+                    @Override public void onResult(List<Place> shares) {
                         receivedShares.clear();
                         receivedShares.addAll(shares);
                         if (receivedShares.isEmpty()) selectedCategory = "Tất cả";
                         List<String> ids = new ArrayList<>();
-                        for (FirebaseShareRepository.SharedPlace share : shares) ids.add(share.placeId);
+                        for (Place share : shares) ids.add(share.id);
                         FirebasePlaceRepository.loadByIds(HomeActivity.this, ids,
                                 new FirebasePlaceRepository.PlacesCallback() {
                                     @Override public void onPlaces(List<Place> places) {
-                                        AppData.SHARED_PLACES.clear();
-                                        AppData.SHARED_PLACES.addAll(places);
+                                        App.SHARED_PLACES.clear();
+                                        App.SHARED_PLACES.addAll(places);
                                         sharesLoaded = true;
                                         sharesLoadFailed = false;
                                         renderResults();
@@ -113,7 +113,7 @@ public class HomeActivity extends BaseNavigationActivity {
                                 });
                     }
                     @Override public void onError(Exception error) {
-                        AppData.SHARED_PLACES.clear();
+                        App.SHARED_PLACES.clear();
                         sharesLoaded = true;
                         sharesLoadFailed = true;
                         results.removeAllViews();
@@ -141,12 +141,12 @@ public class HomeActivity extends BaseNavigationActivity {
         String query = searchField == null || searchField.getText() == null
                 ? "" : searchField.getText().toString().trim().toLowerCase(java.util.Locale.ROOT);
         Set<String> sharedPlaceIds = new HashSet<>();
-        for (FirebaseShareRepository.SharedPlace share : receivedShares) {
-            if (share.placeId != null && !share.placeId.isEmpty()) sharedPlaceIds.add(share.placeId);
+        for (Place share : receivedShares) {
+            if (share.id != null && !share.id.isEmpty()) sharedPlaceIds.add(share.id);
         }
         List<Integer> matches = new ArrayList<>();
-        for (int i = 0; i < AppData.SHARED_PLACES.size(); i++) {
-            Place place = AppData.SHARED_PLACES.get(i);
+        for (int i = 0; i < App.SHARED_PLACES.size(); i++) {
+            Place place = App.SHARED_PLACES.get(i);
             if (!sharedPlaceIds.contains(place.id)) continue;
             String searchable = (place.name + " " + place.category + " " + place.address + " " + place.tags).toLowerCase();
             if (query.isEmpty() || searchable.contains(query)) matches.add(i);
@@ -173,7 +173,7 @@ public class HomeActivity extends BaseNavigationActivity {
                     results.addView(sectionTitle(entry.getKey(), categoryMatches.size() + " địa điểm"),
                             Ui.margin(-1, -2, 0, 14, 0, 8, this));
                     for (int position : categoryMatches) {
-                        Place sharedPlace = AppData.SHARED_PLACES.get(position);
+                        Place sharedPlace = App.SHARED_PLACES.get(position);
                         results.addView(new PlaceCardView(this, sharedPlace, true,
                                 view -> openShared(position)), Ui.margin(-1, 104, 0, 0, 0, 10, this));
                     }
@@ -201,8 +201,8 @@ public class HomeActivity extends BaseNavigationActivity {
     private Map<String, List<Integer>> groupSharedPlaces(Set<String> sharedPlaceIds) {
         Map<String, List<Integer>> groups = new LinkedHashMap<>();
         Set<String> addedIds = new HashSet<>();
-        for (int i = 0; i < AppData.SHARED_PLACES.size(); i++) {
-            Place place = AppData.SHARED_PLACES.get(i);
+        for (int i = 0; i < App.SHARED_PLACES.size(); i++) {
+            Place place = App.SHARED_PLACES.get(i);
             if (!sharedPlaceIds.contains(place.id) || !addedIds.add(place.id)) continue;
             String category = place.category == null || place.category.trim().isEmpty()
                     ? "Khác" : place.category.trim();

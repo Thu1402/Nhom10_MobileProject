@@ -16,11 +16,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.bumptech.glide.Glide;
 import com.google.android.material.button.MaterialButton;
 import com.example.app.R;
-import com.example.app.data.AppData;
+import com.example.app.App;
 import com.example.app.data.FirebasePlaceRepository;
 import com.example.app.model.Place;
 import com.example.app.ui.Ui;
-import com.example.app.ui.PlaceFormUtils;
+
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.ListenerRegistration;
 
@@ -59,12 +59,12 @@ public class PlaceDetailActivity extends AppCompatActivity {
                     getIntent().getStringExtra(DEMO_TAGS));
         }
         int sharedIndex = getIntent().getIntExtra(SHARED_PLACE_INDEX, -1);
-        if (demoPlace == null && sharedIndex >= 0 && sharedIndex < AppData.SHARED_PLACES.size()) {
-            demoPlace = AppData.SHARED_PLACES.get(sharedIndex);
+        if (demoPlace == null && sharedIndex >= 0 && sharedIndex < App.SHARED_PLACES.size()) {
+            demoPlace = App.SHARED_PLACES.get(sharedIndex);
         }
         String sharedPlaceId = getIntent().getStringExtra(SHARED_PLACE_ID);
         if (demoPlace == null && sharedPlaceId != null && !sharedPlaceId.isEmpty()) {
-            for (Place sharedPlace : AppData.SHARED_PLACES) {
+            for (Place sharedPlace : App.SHARED_PLACES) {
                 if (sharedPlaceId.equals(sharedPlace.id)) {
                     demoPlace = sharedPlace;
                     break;
@@ -77,8 +77,8 @@ public class PlaceDetailActivity extends AppCompatActivity {
             }
         }
         selectedIndex = getIntent().getIntExtra(PLACE_INDEX, 0);
-        if (demoPlace == null && selectedIndex >= 0 && selectedIndex < AppData.PLACES.size()) {
-            placeId = AppData.PLACES.get(selectedIndex).id;
+        if (demoPlace == null && selectedIndex >= 0 && selectedIndex < App.PLACES.size()) {
+            placeId = App.PLACES.get(selectedIndex).id;
         }
         showPlace();
         if (!placeId.isEmpty()) listenForPlaceChanges();
@@ -88,9 +88,9 @@ public class PlaceDetailActivity extends AppCompatActivity {
         placeListener = FirebasePlaceRepository.listenToPlace(this, placeId,
                 new FirebasePlaceRepository.PlaceListenerCallback() {
                     @Override public void onPlace(Place updated) {
-                        for (int i = 0; i < AppData.PLACES.size(); i++) {
-                            if (placeId.equals(AppData.PLACES.get(i).id)) {
-                                AppData.PLACES.set(i, updated);
+                        for (int i = 0; i < App.PLACES.size(); i++) {
+                            if (placeId.equals(App.PLACES.get(i).id)) {
+                                App.PLACES.set(i, updated);
                                 selectedIndex = i;
                                 break;
                             }
@@ -118,19 +118,19 @@ public class PlaceDetailActivity extends AppCompatActivity {
             return;
         }
         int index = selectedIndex;
-        if (AppData.PLACES.isEmpty()) { finish(); return; }
+        if (App.PLACES.isEmpty()) { finish(); return; }
         if (!placeId.isEmpty()) {
-            for (int i = 0; i < AppData.PLACES.size(); i++) {
-                if (placeId.equals(AppData.PLACES.get(i).id)) {
+            for (int i = 0; i < App.PLACES.size(); i++) {
+                if (placeId.equals(App.PLACES.get(i).id)) {
                     index = i;
                     break;
                 }
             }
         }
-        index = Math.max(0, Math.min(index, AppData.PLACES.size() - 1));
+        index = Math.max(0, Math.min(index, App.PLACES.size() - 1));
         selectedIndex = index;
         final int selectedIndex = index;
-        Place place = AppData.PLACES.get(index);
+        Place place = App.PLACES.get(index);
         renderPlace(place);
     }
 
@@ -169,7 +169,7 @@ public class PlaceDetailActivity extends AppCompatActivity {
         body.addView(Ui.text(this, place.name, 28, Ui.color(this, R.color.ink), true), Ui.margin(-1, -2, 0, 5, 0, 0, this));
         String addressLine = "⌖  " + place.address + (place.distance.isEmpty() ? "" : "  ·  " + place.distance);
         body.addView(Ui.text(this, addressLine, 11, Ui.color(this, R.color.muted), false), Ui.margin(-1, -2, 0, 8, 0, 18, this));
-        body.addView(Ui.text(this, PlaceFormUtils.tagsForDisplay(place.tags), 12, Ui.color(this, R.color.violet), true), Ui.margin(-1, -2, 0, 0, 0, 18, this));
+        body.addView(Ui.text(this, Ui.tagsForDisplay(place.tags), 12, Ui.color(this, R.color.violet), true), Ui.margin(-1, -2, 0, 0, 0, 18, this));
         body.addView(Ui.text(this, "Về địa điểm này", 17, Ui.color(this, R.color.ink), true));
         body.addView(Ui.text(this, place.description, 13, Ui.color(this, R.color.muted), false), Ui.margin(-1, -2, 0, 8, 0, 24, this));
         MaterialButton edit = Ui.primaryButton(this, "Chỉnh sửa địa điểm");
@@ -189,7 +189,7 @@ public class PlaceDetailActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (findViewById(R.id.detail_content) != null && (demoPlace != null || !AppData.PLACES.isEmpty())) showPlace();
+        if (findViewById(R.id.detail_content) != null && (demoPlace != null || !App.PLACES.isEmpty())) showPlace();
     }
 
     @Override protected void onDestroy() {

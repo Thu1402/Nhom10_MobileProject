@@ -12,11 +12,11 @@ import androidx.appcompat.app.AlertDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputLayout;
 import com.example.app.R;
-import com.example.app.data.AppData;
+import com.example.app.App;
 import com.example.app.data.FirebasePlaceRepository;
 import com.example.app.model.Place;
 import com.example.app.ui.Ui;
-import com.example.app.ui.PlaceFormUtils;
+
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.storage.StorageException;
 import com.google.firebase.firestore.FirebaseFirestoreException;
@@ -34,9 +34,9 @@ public class EditPlaceActivity extends AppCompatActivity {
         super.onCreate(state);
         setContentView(R.layout.activity_edit_place);
         index = getIntent().getIntExtra(PlaceDetailActivity.PLACE_INDEX, 0);
-        if (AppData.PLACES.isEmpty()) { finish(); return; }
-        index = Math.max(0, Math.min(index, AppData.PLACES.size() - 1));
-        Place place = AppData.PLACES.get(index);
+        if (App.PLACES.isEmpty()) { finish(); return; }
+        index = Math.max(0, Math.min(index, App.PLACES.size() - 1));
+        Place place = App.PLACES.get(index);
         placeId = place.id;
         LinearLayout page = findViewById(R.id.edit_place_content);
         page.addView(Ui.text(this, "Chỉnh sửa địa điểm", 27, Ui.color(this, R.color.ink), true));
@@ -56,14 +56,14 @@ public class EditPlaceActivity extends AppCompatActivity {
         page.addView(imagePicker, Ui.margin(-1, 160, 0, 0, 0, 20, this));
         nameInput = Ui.input(this, "Tên địa điểm", false);
         categoryInput = Ui.input(this, "Danh mục", false);
-        PlaceFormUtils.setupCategoryDropdown(this, categoryInput, place.category);
+        Ui.setupCategoryDropdown(this, categoryInput, place.category);
         addressInput = Ui.input(this, "Địa chỉ", false);
         descriptionInput = Ui.input(this, "Mô tả địa điểm", true);
         tagsInput = Ui.input(this, "Tag", false);
         setValue(nameInput, place.name); setValue(categoryInput, place.category);
         setValue(addressInput, place.address); setValue(descriptionInput, place.description);
-        setValue(tagsInput, PlaceFormUtils.normalizeTags(place.tags));
-        PlaceFormUtils.bindTagPrefixing(tagsInput.getEditText());
+        setValue(tagsInput, Ui.normalizeTags(place.tags));
+        Ui.bindTagPrefixing(tagsInput.getEditText());
         page.addView(nameInput, Ui.margin(-1, -2, 0, 24, 0, 14, this));
         page.addView(categoryInput, Ui.margin(-1, -2, 0, 0, 0, 14, this));
         page.addView(addressInput, Ui.margin(-1, -2, 0, 0, 0, 14, this));
@@ -82,9 +82,9 @@ public class EditPlaceActivity extends AppCompatActivity {
         placeListener = FirebasePlaceRepository.listenToPlace(this, placeId,
                 new FirebasePlaceRepository.PlaceListenerCallback() {
                     @Override public void onPlace(Place updated) {
-                        for (int i = 0; i < AppData.PLACES.size(); i++) {
-                            if (placeId.equals(AppData.PLACES.get(i).id)) {
-                                AppData.PLACES.set(i, updated);
+                        for (int i = 0; i < App.PLACES.size(); i++) {
+                            if (placeId.equals(App.PLACES.get(i).id)) {
+                                App.PLACES.set(i, updated);
                                 index = i;
                                 break;
                             }
@@ -120,15 +120,15 @@ public class EditPlaceActivity extends AppCompatActivity {
         if (name.isEmpty() || category.isEmpty() || address.isEmpty()) {
             Toast.makeText(this, "Nhập tên, danh mục và địa chỉ.", Toast.LENGTH_SHORT).show(); return;
         }
-        Place old = AppData.PLACES.get(index);
-        String tags = PlaceFormUtils.normalizeTags(value(tagsInput));
+        Place old = App.PLACES.get(index);
+        String tags = Ui.normalizeTags(value(tagsInput));
         Place updated = new Place(old.id, old.ownerId, name, category, address, old.distance, old.imageUrl,
                 description, tags.isEmpty() ? category : tags, old.latitude, old.longitude);
         saveButton.setEnabled(false);
         saveButton.setText(selectedImageUri == null ? "Đang lưu..." : "Đang lưu thay đổi và ảnh...");
         FirebasePlaceRepository.update(this, updated, selectedImageUri, new FirebasePlaceRepository.PlaceCallback() {
             @Override public void onSuccess(Place savedPlace) {
-                AppData.PLACES.set(index, savedPlace);
+                App.PLACES.set(index, savedPlace);
                 Toast.makeText(EditPlaceActivity.this, "Đã cập nhật địa điểm", Toast.LENGTH_SHORT).show();
                 Intent intent = new Intent(EditPlaceActivity.this, PlaceDetailActivity.class);
                 intent.putExtra(PlaceDetailActivity.PLACE_INDEX, index);
