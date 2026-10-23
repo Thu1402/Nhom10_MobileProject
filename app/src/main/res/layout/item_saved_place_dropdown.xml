@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="76dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:background="@drawable/bg_saved_place_unselected"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp">
+
+    <FrameLayout
+        android:layout_width="54dp"
+        android:layout_height="54dp">
+        <ImageView
+            android:id="@+id/imgSavedPlace"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:src="@drawable/bg_empty_place_photo" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+        <TextView
+            android:id="@+id/tvSavedPlaceName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="#202124"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+        <TextView
+            android:id="@+id/tvSavedPlaceAddress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textColor="#757575"
+            android:textSize="12sp" />
+    </LinearLayout>
+    <TextView
+        android:id="@+id/tvSavedPlaceSelected"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/bg_saved_place_selected"
+        android:gravity="center"
+        android:text="✓"
+        android:textColor="#40521F"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+</LinearLayout>

@@ -1,0 +1,13 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#E6F1BC" />
+            <corners android:radius="18dp" />
+        </shape>
+    </item>
+    <item
+        android:drawable="@drawable/ic_empty_place_camera"
+        android:width="96dp"
+        android:height="96dp"
+        android:gravity="center" />
+</layer-list>
