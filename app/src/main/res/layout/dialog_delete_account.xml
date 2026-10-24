@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@drawable/bg_delete_dialog">
+
+    <!-- Icon thùng rác -->
+    <TextView
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="@drawable/bg_icon_tile"
+        android:gravity="center"
+        android:text="♜"
+        android:textColor="#BC5552"
+        android:textSize="25sp" />
+
+    <!-- Tiêu đề -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:text="Xóa tài khoản?"
+        android:textColor="#292D28"
+        android:textSize="21sp"
+        android:textStyle="bold" />
+
+    <!-- Nội dung cảnh báo -->
+    <TextView
+        android:id="@+id/txtDeleteMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:lineSpacingExtra="3dp"
+        android:text="Tài khoản của bạn cùng mọi địa điểm đã lưu, ảnh và kết nối bạn bè sẽ bị xóa vĩnh viễn. Bạn không thể hoàn tác hành động này."
+        android:textColor="#85867D"
+        android:textSize="14sp" />
+
+    <EditText
+        android:id="@+id/edtDeleteConfirmation"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_delete_dialog"
+        android:hint="Nhập TOIMUONXOATAIKHOAN"
+        android:inputType="textCapCharacters"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:singleLine="true"
+        android:textColor="#292A27"
+        android:textColorHint="#999999"
+        android:textSize="14sp" />
+
+    <EditText
+        android:id="@+id/edtDeletePassword"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_delete_dialog"
+        android:hint="Mật khẩu tài khoản"
+        android:inputType="textPassword"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:singleLine="true"
+        android:textColor="#292A27"
+        android:textColorHint="#999999"
+        android:textSize="14sp" />
+
+    <!-- Nút Hủy -->
+    <TextView
+        android:id="@+id/btnCancelDelete"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_delete_cancel"
+        android:gravity="center"
+        android:text="Hủy"
+        android:textColor="@color/violet_dark"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <!-- Nút xác nhận xóa -->
+    <TextView
+        android:id="@+id/btnConfirmDelete"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_delete_confirm"
+        android:gravity="center"
+        android:text="Xóa vĩnh viễn"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:backgroundTint="#B25755"/>
+
+</LinearLayout>

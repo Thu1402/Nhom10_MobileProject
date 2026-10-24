@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/profileScrollView"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFF"
+    android:fillViewport="true"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingBottom="24dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp">
+
+            <ImageButton
+                android:id="@+id/btnEditProfile"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:contentDescription="Chỉnh sửa hồ sơ"
+                android:padding="12dp"
+                android:src="@drawable/ic_edit_simple" />
+
+            <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/btnProfileAddFriend"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="10dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:text="♙+"
+                android:textColor="#171717"
+                android:textSize="24sp"
+                android:contentDescription="Chia sẻ địa điểm" />
+
+            <ImageButton
+                android:id="@+id/btnSettings"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Thiết lập"
+                android:padding="12dp"
+                android:src="@drawable/ic_settings"
+                android:tint="#171717" />
+        </LinearLayout>
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="156dp"
+            android:paddingStart="22dp"
+            android:paddingTop="22dp"
+            android:paddingEnd="18dp">
+
+            <FrameLayout
+                android:id="@+id/profileAvatarFrame"
+                android:layout_width="104dp"
+                android:layout_height="104dp"
+                android:layout_alignParentEnd="true"
+                android:layout_marginTop="20dp">
+                <ImageView
+                    android:id="@+id/imgProfilePhoto"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_avatar"
+                    android:contentDescription="Ảnh đại diện"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone" />
+                <TextView
+                    android:id="@+id/txtProfileAvatar"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_avatar"
+                    android:gravity="center"
+                    android:textColor="@color/violet_dark"
+                    android:textSize="32sp"
+                    android:textStyle="bold" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/txtProfileName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:layout_toStartOf="@id/profileAvatarFrame"
+                android:layout_marginEnd="12dp"
+                android:maxLines="2"
+                android:text="Tên của bạn"
+                android:textColor="#111111"
+                android:textSize="34sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/txtProfileUsername"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/txtProfileName"
+                android:layout_marginTop="4dp"
+                android:text="@tài_khoản"
+                android:textColor="#858585"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/txtProfileBio"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/txtProfileUsername"
+                android:layout_toStartOf="@id/profileAvatarFrame"
+                android:layout_marginTop="10dp"
+                android:layout_marginEnd="12dp"
+                android:maxLines="3"
+                android:text="Thêm tiểu sử của bạn"
+                android:textColor="#333333"
+                android:textSize="16sp" />
+        </RelativeLayout>
+
+        <LinearLayout
+            android:id="@+id/profileStats"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="22dp"
+            android:layout_marginTop="14dp"
+            android:layout_marginEnd="22dp"
+            android:orientation="horizontal">
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                <TextView android:id="@+id/txtFriendsCount" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" android:textColor="#151515" android:textSize="23sp" android:textStyle="bold" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Bạn bè" android:textColor="#858585" android:textSize="14sp" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                <TextView android:id="@+id/txtSharesCount" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" android:textColor="#151515" android:textSize="23sp" android:textStyle="bold" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Chia sẻ" android:textColor="#858585" android:textSize="14sp" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                <TextView android:id="@+id/txtSavedCount" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" android:textColor="#151515" android:textSize="23sp" android:textStyle="bold" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Đã lưu" android:textColor="#858585" android:textSize="14sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="18dp"
+            android:layout_marginTop="18dp"
+            android:layout_marginEnd="18dp"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/btnQuickPlaces"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_edit_button"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:text="⌖  Bộ sưu tập"
+                android:textColor="#282828"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+            <TextView
+                android:id="@+id/btnQuickShares"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:layout_marginStart="10dp"
+                android:background="@drawable/bg_edit_button"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:text="↗  Chia sẻ địa điểm"
+                android:textColor="#282828"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/collectionSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="18dp"
+            android:paddingTop="24dp"
+            android:paddingEnd="18dp">
+            <RelativeLayout android:layout_width="match_parent" android:layout_height="42dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_centerVertical="true" android:text="Địa điểm" android:textColor="#171717" android:textSize="20sp" android:textStyle="bold" />
+                <TextView android:id="@+id/txtSeeAll" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentEnd="true" android:layout_centerVertical="true" android:text="Xem tất cả" android:textColor="@color/violet_dark" android:textStyle="bold" />
+            </RelativeLayout>
+            <LinearLayout
+                android:id="@+id/collectionCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_collection"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone"
+                android:orientation="vertical"
+                android:padding="12dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginEnd="4dp" android:layout_weight="1.3" android:orientation="vertical">
+                        <ImageView android:id="@+id/imgCollectionPlaceOne" android:layout_width="match_parent" android:layout_height="88dp" android:contentDescription="Chỉnh sửa ghim địa điểm" android:scaleType="centerCrop" android:src="@drawable/bg_empty_place_photo" />
+                        <TextView android:id="@+id/txtCollectionPlaceOne" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="2" android:paddingTop="6dp" android:textColor="#171717" android:textSize="12sp" />
+                    </LinearLayout>
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginEnd="4dp" android:layout_weight="1" android:orientation="vertical">
+                        <ImageView android:id="@+id/imgCollectionPlaceTwo" android:layout_width="match_parent" android:layout_height="88dp" android:contentDescription="Chỉnh sửa ghim địa điểm" android:scaleType="centerCrop" android:src="@drawable/bg_empty_place_photo" />
+                        <TextView android:id="@+id/txtCollectionPlaceTwo" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="2" android:paddingTop="6dp" android:textColor="#171717" android:textSize="12sp" />
+                    </LinearLayout>
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="0.9" android:orientation="vertical">
+                        <ImageView android:id="@+id/imgCollectionPlaceThree" android:layout_width="match_parent" android:layout_height="88dp" android:contentDescription="Chỉnh sửa ghim địa điểm" android:scaleType="centerCrop" android:src="@drawable/bg_empty_place_photo" />
+                        <TextView android:id="@+id/txtCollectionPlaceThree" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="2" android:paddingTop="6dp" android:textColor="#171717" android:textSize="12sp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+            <TextView android:id="@+id/btnCreatePlace" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="12dp" android:background="@drawable/bg_edit_button" android:clickable="true" android:focusable="true" android:gravity="center" android:text="＋  Thêm địa điểm" android:textColor="@color/violet_dark" android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout android:id="@+id/activitySection" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingStart="18dp" android:paddingEnd="18dp" android:visibility="gone">
+            <TextView android:id="@+id/txtActivityHeading" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="28dp" android:layout_marginBottom="8dp" android:text="Hoạt động" android:textColor="#171717" android:textSize="20sp" android:textStyle="bold" />
+            <LinearLayout android:id="@+id/rowActivityPersonal" android:layout_width="match_parent" android:layout_height="72dp" android:gravity="center_vertical" android:orientation="horizontal">
+                <TextView android:layout_width="42dp" android:layout_height="42dp" android:background="@drawable/bg_icon_tile" android:gravity="center" android:text="⌖" android:textColor="@color/violet_dark" android:textSize="23sp" />
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_weight="1" android:orientation="vertical">
+                    <TextView android:id="@+id/txtActivityPlace" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Đang tải…" android:textColor="#292A27" android:textSize="15sp" />
+                </LinearLayout>
+            </LinearLayout>
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E6E5DC" />
+            <LinearLayout android:id="@+id/rowActivityNotifications" android:layout_width="match_parent" android:layout_height="72dp" android:gravity="center_vertical" android:orientation="horizontal">
+                <TextView android:layout_width="42dp" android:layout_height="42dp" android:background="@drawable/bg_icon_tile" android:gravity="center" android:text="↗" android:textColor="@color/violet_dark" android:textSize="23sp" />
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_weight="1" android:orientation="vertical">
+                    <TextView android:id="@+id/txtActivityShare" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Đang tải…" android:textColor="#292A27" android:textSize="15sp" />
+                </LinearLayout>
+            </LinearLayout>
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E6E5DC" />
+            <LinearLayout android:id="@+id/rowActivityPrivacy" android:layout_width="match_parent" android:layout_height="72dp" android:gravity="center_vertical" android:orientation="horizontal">
+                <TextView android:layout_width="42dp" android:layout_height="42dp" android:background="@drawable/bg_icon_tile" android:gravity="center" android:text="＋" android:textColor="@color/violet_dark" android:textSize="23sp" />
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_weight="1" android:orientation="vertical">
+                    <TextView android:id="@+id/txtActivityAdded" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Đang tải…" android:textColor="#292A27" android:textSize="15sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>
