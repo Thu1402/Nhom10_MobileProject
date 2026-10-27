@@ -35,7 +35,24 @@ public final class FirebaseUserRepository {
         void onError(Exception error);
     }
 
+    public interface BlockCallback { void onComplete(Exception error); }
+
     private FirebaseUserRepository() {}
+
+    public static void setBlocked(Context context, String uid, boolean blocked, BlockCallback callback) {
+        if (!App.isAdmin()) {
+            callback.onComplete(new SecurityException("Chỉ quản trị viên mới được khóa tài khoản."));
+            return;
+        }
+        Map<String, Object> update = new HashMap<>();
+        update.put("blocked", blocked);
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        WriteBatch batch = db.batch();
+        batch.update(db.collection("users").document(uid), update);
+        batch.update(db.collection("publicProfiles").document(uid), update);
+        batch.commit().addOnSuccessListener(unused -> callback.onComplete(null))
+                .addOnFailureListener(callback::onComplete);
+    }
 
     public static ListenerRegistration load(Context context, ProfileCallback callback) {
         if (!isConfigured(context)) {
@@ -183,7 +200,7 @@ public final class FirebaseUserRepository {
 
     private static UserProfile fromDocument(DocumentSnapshot document) {
         return new UserProfile(document.getId(), string(document, "name"), string(document, "username"),
-                string(document, "bio"), string(document, "imageUrl"));
+                string(document, "bio"), string(document, "imageUrl"), Boolean.TRUE.equals(document.getBoolean("blocked")));
     }
 
     private static String string(DocumentSnapshot document, String field) {

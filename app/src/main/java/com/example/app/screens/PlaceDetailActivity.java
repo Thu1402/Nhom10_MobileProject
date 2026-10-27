@@ -13,6 +13,7 @@ import android.view.ViewGroup;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
 import com.bumptech.glide.Glide;
 import com.google.android.material.button.MaterialButton;
 import com.example.app.R;
@@ -179,6 +180,29 @@ public class PlaceDetailActivity extends AppCompatActivity {
         }
         edit.setOnClickListener(view -> startActivity(new Intent(this, EditPlaceActivity.class).putExtra(PLACE_INDEX, currentIndex)));
         body.addView(edit, Ui.margin(-1, 54, 0, 10, 0, 0, this));
+        MaterialButton delete = Ui.softButton(this, "Xóa bài đăng");
+        delete.setTextColor(Color.rgb(180, 45, 45));
+        if (demoPlace != null || !App.isAdmin()) delete.setVisibility(View.GONE);
+        delete.setOnClickListener(view -> new AlertDialog.Builder(this)
+                .setTitle("Xóa bài đăng?")
+                .setMessage("Bài đăng ‘" + place.name + "’ sẽ bị xóa khỏi danh sách chung.")
+                .setNegativeButton("Hủy", null)
+                .setPositiveButton("Xóa", (dialog, which) -> FirebasePlaceRepository.delete(
+                        this, place.id, new FirebasePlaceRepository.ResultCallback() {
+                            @Override public void onSuccess() {
+                                for (int i = App.PLACES.size() - 1; i >= 0; i--) {
+                                    if (place.id.equals(App.PLACES.get(i).id)) App.PLACES.remove(i);
+                                }
+                                Toast.makeText(PlaceDetailActivity.this, "Đã xóa bài đăng.", Toast.LENGTH_SHORT).show();
+                                finish();
+                            }
+                            @Override public void onError(Exception error) {
+                                Toast.makeText(PlaceDetailActivity.this,
+                                        "Không xóa được bài đăng. Kiểm tra kết nối và Firestore Rules.", Toast.LENGTH_LONG).show();
+                            }
+                        }))
+                .show());
+        body.addView(delete, Ui.margin(-1, 52, 0, 10, 0, 0, this));
         MaterialButton share = Ui.softButton(this, "Chia sẻ địa điểm");
         if (demoPlace != null) share.setVisibility(View.GONE);
         share.setOnClickListener(view -> startActivity(new Intent(this, com.example.app.share.ShareLocationActivity.class).putExtra("PLACE_NAME", place.name).putExtra(PLACE_INDEX, currentIndex)));

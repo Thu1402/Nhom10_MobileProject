@@ -10,6 +10,8 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 import java.util.ArrayList;
 import java.util.List;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 
 public class App extends Application {
     public interface SessionCallback {
@@ -55,5 +57,17 @@ public class App extends Application {
                     }
                     callback.onError(error);
                 });
+    }
+
+    public static boolean isAdmin() {
+        if (FirebaseAuth.getInstance().getCurrentUser() == null) return false;
+        String email = FirebaseAuth.getInstance().getCurrentUser().getEmail();
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest("username:admin".getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (byte value : digest) hex.append(String.format(java.util.Locale.ROOT, "%02x", value & 0xff));
+            return ("u" + hex.substring(0, 48) + "@tapmap.invalid").equalsIgnoreCase(email);
+        } catch (Exception error) { return false; }
     }
 }

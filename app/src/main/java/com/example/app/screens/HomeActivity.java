@@ -88,103 +88,43 @@ public class HomeActivity extends BaseNavigationActivity {
                         13, Ui.color(HomeActivity.this, R.color.muted), false));
             }
         });
-        sharesListener = FirebaseShareRepository.listenReceived(this,
-                new FirebaseShareRepository.ReceivedCallback() {
-                    @Override public void onResult(List<Place> shares) {
-                        receivedShares.clear();
-                        receivedShares.addAll(shares);
-                        if (receivedShares.isEmpty()) selectedCategory = "Tất cả";
-                        List<String> ids = new ArrayList<>();
-                        for (Place share : shares) ids.add(share.id);
-                        FirebasePlaceRepository.loadByIds(HomeActivity.this, ids,
-                                new FirebasePlaceRepository.PlacesCallback() {
-                                    @Override public void onPlaces(List<Place> places) {
-                                        App.SHARED_PLACES.clear();
-                                        App.SHARED_PLACES.addAll(places);
-                                        sharesLoaded = true;
-                                        sharesLoadFailed = false;
-                                        renderResults();
-                                    }
-                                    @Override public void onError(Exception error) {
-                                        sharesLoaded = true;
-                                        sharesLoadFailed = true;
-                                        renderResults();
-                                    }
-                                });
-                    }
-                    @Override public void onError(Exception error) {
-                        App.SHARED_PLACES.clear();
-                        sharesLoaded = true;
-                        sharesLoadFailed = true;
-                        results.removeAllViews();
-                        results.addView(Ui.text(HomeActivity.this,
-                                "Không tải được mục chia sẻ.",
-                                13, Ui.color(HomeActivity.this, R.color.muted), false));
-                    }
-                });
     }
 
     private void renderResults() {
         if (results == null) return;
         results.removeAllViews();
-        if (!placesLoaded || !sharesLoaded) return;
+        if (!placesLoaded) return;
         if (placesLoadFailed) {
             results.addView(Ui.text(this, "Không tải được địa điểm.",
                     13, Ui.color(this, R.color.muted), false));
             return;
         }
-        if (sharesLoadFailed) {
-            results.addView(Ui.text(this, "Không tải được mục chia sẻ.",
-                    13, Ui.color(this, R.color.muted), false));
-            return;
-        }
         String query = searchField == null || searchField.getText() == null
                 ? "" : searchField.getText().toString().trim().toLowerCase(java.util.Locale.ROOT);
-        Set<String> sharedPlaceIds = new HashSet<>();
-        for (Place share : receivedShares) {
-            if (share.id != null && !share.id.isEmpty()) sharedPlaceIds.add(share.id);
-        }
-        List<Integer> matches = new ArrayList<>();
-        for (int i = 0; i < App.SHARED_PLACES.size(); i++) {
-            Place place = App.SHARED_PLACES.get(i);
-            if (!sharedPlaceIds.contains(place.id)) continue;
-            String searchable = (place.name + " " + place.category + " " + place.address + " " + place.tags).toLowerCase();
-            if (query.isEmpty() || searchable.contains(query)) matches.add(i);
-        }
-        Map<String, List<Integer>> byCategory = groupSharedPlaces(sharedPlaceIds);
-        Set<String> filterCategories = new LinkedHashSet<>(byCategory.keySet());
+        Set<String> filterCategories = new LinkedHashSet<>();
+        for (Place place : App.PLACES) filterCategories.add(place.category == null || place.category.trim().isEmpty()
+                ? "Khác" : place.category.trim());
         for (Place place : fallbackPlaces) {
             String category = place.category == null || place.category.trim().isEmpty()
                     ? "Khác" : place.category.trim();
             filterCategories.add(category);
         }
         renderCategoryFilters(filterCategories);
-        if (!receivedShares.isEmpty()) {
-            if (!byCategory.isEmpty()) {
-                results.addView(sectionTitle("Bạn bè đã chia sẻ", matches.size() + " nơi"),
-                        Ui.margin(-1, -2, 0, 0, 0, 10, this));
-                boolean anyVisible = false;
-                for (Map.Entry<String, List<Integer>> entry : byCategory.entrySet()) {
-                    if (!"Tất cả".equals(selectedCategory) && !selectedCategory.equals(entry.getKey())) continue;
-                    List<Integer> categoryMatches = new ArrayList<>();
-                    for (int index : entry.getValue()) if (matches.contains(index)) categoryMatches.add(index);
-                    if (categoryMatches.isEmpty()) continue;
-                    anyVisible = true;
-                    results.addView(sectionTitle(entry.getKey(), categoryMatches.size() + " địa điểm"),
-                            Ui.margin(-1, -2, 0, 14, 0, 8, this));
-                    for (int position : categoryMatches) {
-                        Place sharedPlace = App.SHARED_PLACES.get(position);
-                        results.addView(new PlaceCardView(this, sharedPlace, true,
-                                view -> openShared(position)), Ui.margin(-1, 104, 0, 0, 0, 10, this));
-                    }
-                }
-                if (!anyVisible) {
-                    results.addView(Ui.text(this, "Không tìm thấy địa điểm phù hợp.",
-                            13, Ui.color(this, R.color.muted), false), Ui.margin(-1, -2, 0, 12, 0, 0, this));
-                }
-            } else {
-                results.addView(Ui.text(this, "Địa điểm được chia sẻ không còn khả dụng.",
-                        13, Ui.color(this, R.color.muted), false), Ui.margin(-1, -2, 0, 12, 0, 0, this));
+        List<Place> matches = new ArrayList<>();
+        for (Place place : App.PLACES) {
+            String category = place.category == null || place.category.trim().isEmpty() ? "Khác" : place.category.trim();
+            String searchable = (place.name + " " + category + " " + place.address + " " + place.tags)
+                    .toLowerCase(java.util.Locale.ROOT);
+            if (("Tất cả".equals(selectedCategory) || selectedCategory.equals(category))
+                    && (query.isEmpty() || searchable.contains(query))) matches.add(place);
+        }
+        if (!matches.isEmpty()) {
+            results.addView(sectionTitle("Địa điểm cộng đồng", matches.size() + " nơi"),
+                    Ui.margin(-1, -2, 0, 0, 0, 10, this));
+            for (Place place : matches) {
+                int position = App.PLACES.indexOf(place);
+                results.addView(new PlaceCardView(this, place, true, view -> open(position)),
+                        Ui.margin(-1, 104, 0, 0, 0, 10, this));
             }
         }
         List<Place> recommendations = matchingRecommendations(query);
@@ -332,7 +272,6 @@ public class HomeActivity extends BaseNavigationActivity {
     @Override protected void onDestroy() {
         searchRenderHandler.removeCallbacks(pendingSearchRender);
         if (placesListener != null) placesListener.remove();
-        if (sharesListener != null) sharesListener.remove();
         super.onDestroy();
     }
 }

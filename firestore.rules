@@ -1,74 +1,83 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == 'u9529e86c20d910ae4564d048bd46d65e32c9276efb5f7cf1@tapmap.invalid';
+    }
+    function activeAccount() {
+      return request.auth != null
+        && (!exists(/databases/$(database)/documents/users/$(request.auth.uid))
+          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('blocked', false) != true);
+    }
+
     match /places/{placeId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null
-        && request.resource.data.ownerUid == request.auth.uid;
-      allow update: if request.auth != null
-        && resource.data.ownerUid == request.auth.uid
+      allow read: if activeAccount();
+      allow create: if activeAccount() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if activeAccount() && resource.data.ownerUid == request.auth.uid
         && request.resource.data.ownerUid == resource.data.ownerUid;
-      allow delete: if request.auth != null
-        && resource.data.ownerUid == request.auth.uid;
+      allow delete: if activeAccount()
+        && (resource.data.ownerUid == request.auth.uid || isAdmin());
     }
 
     match /users/{userId} {
-      allow read, create, update, delete: if request.auth != null
-        && request.auth.uid == userId;
+      // A blocked user can still read their own status so the app can show the lock notice.
+      allow read: if request.auth != null && (request.auth.uid == userId || (activeAccount() && isAdmin()));
+      allow create: if activeAccount() && request.auth.uid == userId
+        && ((isAdmin() && request.resource.data.role == 'admin')
+          || (!('role' in request.resource.data) && !('blocked' in request.resource.data)));
+      allow update: if activeAccount() && (
+          (isAdmin() && request.resource.data.get('role', '') == resource.data.get('role', ''))
+          || (request.auth.uid == userId
+            && request.resource.data.get('role', '') == resource.data.get('role', '')
+            && request.resource.data.get('blocked', false) == resource.data.get('blocked', false))
+        );
+      allow delete: if activeAccount() && (request.auth.uid == userId || isAdmin());
     }
 
     match /publicProfiles/{userId} {
-      allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null
-        && request.auth.uid == userId;
+      allow read: if activeAccount();
+      allow create: if activeAccount() && request.auth.uid == userId
+        && ((isAdmin() && request.resource.data.role == 'admin')
+          || (!('role' in request.resource.data) && !('blocked' in request.resource.data)));
+      allow update: if activeAccount() && (isAdmin()
+        || (request.auth.uid == userId
+          && request.resource.data.get('role', '') == resource.data.get('role', '')
+          && request.resource.data.get('blocked', false) == resource.data.get('blocked', false)));
+      allow delete: if activeAccount() && (request.auth.uid == userId || isAdmin());
     }
 
-    // Sign-in by phone uses one hashed document lookup. Clients cannot list these mappings.
     match /authIdentifiers/{identifierId} {
-      allow get: if request.auth != null;
+      allow get: if activeAccount();
       allow list: if false;
-      allow create: if request.auth != null
+      allow create: if activeAccount() && request.resource.data.uid == request.auth.uid;
+      allow update: if activeAccount() && resource.data.uid == request.auth.uid
         && request.resource.data.uid == request.auth.uid;
-      allow update: if request.auth != null
-        && resource.data.uid == request.auth.uid
-        && request.resource.data.uid == request.auth.uid;
-      allow delete: if request.auth != null
-        && resource.data.uid == request.auth.uid;
+      allow delete: if activeAccount() && resource.data.uid == request.auth.uid;
     }
 
     match /shares/{shareId} {
-      allow create: if request.auth != null
-        && request.resource.data.senderUid == request.auth.uid;
-      allow read: if request.auth != null
-        && (resource.data.senderUid == request.auth.uid
-          || resource.data.recipientUid == request.auth.uid);
-      allow delete: if request.auth != null
-        && (resource.data.senderUid == request.auth.uid
-          || resource.data.recipientUid == request.auth.uid);
+      allow create: if activeAccount() && request.resource.data.senderUid == request.auth.uid;
+      allow read: if activeAccount() && (resource.data.senderUid == request.auth.uid
+        || resource.data.recipientUid == request.auth.uid);
+      allow delete: if activeAccount() && (resource.data.senderUid == request.auth.uid
+        || resource.data.recipientUid == request.auth.uid);
     }
 
     match /friendRequests/{requestId} {
-      allow read: if request.auth != null
-        && (resource.data.senderUid == request.auth.uid
-          || resource.data.recipientUid == request.auth.uid);
-      allow create: if request.auth != null
-        && request.resource.data.senderUid == request.auth.uid
-        && request.resource.data.recipientUid != request.auth.uid
-        && request.resource.data.status == "pending";
-      allow update: if request.auth != null
+      allow read: if activeAccount() && (resource.data.senderUid == request.auth.uid
+        || resource.data.recipientUid == request.auth.uid);
+      allow create: if activeAccount() && request.resource.data.senderUid == request.auth.uid
+        && request.resource.data.recipientUid != request.auth.uid && request.resource.data.status == "pending";
+      allow update: if activeAccount()
         && request.resource.data.senderUid == resource.data.senderUid
         && request.resource.data.recipientUid == resource.data.recipientUid
-        && (
-          (request.auth.uid == resource.data.recipientUid
-            && resource.data.status == "pending"
-            && request.resource.data.status in ["accepted", "rejected"])
-          || (request.auth.uid == resource.data.senderUid
-            && resource.data.status == "rejected"
-            && request.resource.data.status == "pending")
-        );
-      allow delete: if request.auth != null
-        && (resource.data.senderUid == request.auth.uid
-          || resource.data.recipientUid == request.auth.uid);
+        && ((request.auth.uid == resource.data.recipientUid && resource.data.status == "pending"
+              && request.resource.data.status in ["accepted", "rejected"])
+          || (request.auth.uid == resource.data.senderUid && resource.data.status == "rejected"
+              && request.resource.data.status == "pending"));
+      allow delete: if activeAccount() && (resource.data.senderUid == request.auth.uid
+        || resource.data.recipientUid == request.auth.uid);
     }
   }
 }
