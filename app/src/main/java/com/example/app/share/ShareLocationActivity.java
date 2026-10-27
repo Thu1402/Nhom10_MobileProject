@@ -394,7 +394,7 @@ public class ShareLocationActivity extends BaseNavigationActivity {
             }
             @Override public void onError(Exception error) {
                 Toast.makeText(ShareLocationActivity.this,
-                        "Không gửi được lời mời. Kiểm tra quyền Firestore rồi thử lại.", Toast.LENGTH_LONG).show();
+                        "Không gửi được lời mời.", Toast.LENGTH_LONG).show();
             }
         });
     }

@@ -103,7 +103,7 @@ public class PlaceDetailActivity extends AppCompatActivity {
                     @Override public void onMissing() {
                         if (!isFinishing()) {
                             Toast.makeText(PlaceDetailActivity.this,
-                                    "Địa điểm này đã bị xóa khỏi Firebase.", Toast.LENGTH_SHORT).show();
+                                    "", Toast.LENGTH_SHORT).show();
                             finish();
                         }
                     }

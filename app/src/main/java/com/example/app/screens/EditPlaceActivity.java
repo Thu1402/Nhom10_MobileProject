@@ -131,7 +131,7 @@ public class EditPlaceActivity extends AppCompatActivity {
                     }
                     @Override public void onMissing() {
                         Toast.makeText(EditPlaceActivity.this,
-                                "Địa điểm này đã bị xóa khỏi Firebase.", Toast.LENGTH_SHORT).show();
+                                "", Toast.LENGTH_SHORT).show();
                         finish();
                     }
                     @Override public void onError(Exception error) {
