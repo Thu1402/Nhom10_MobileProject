@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    html, body, #map { width:100%; height:100%; margin:0; padding:0; overflow:hidden; background:#eef0e5; }
+    .leaflet-control-attribution { font-size:10px !important; }
+    .leaflet-popup-content { font:14px sans-serif; }
+    .tapmap-marker-icon { background:transparent !important; border:0 !important; }
+  </style>
+</head>
+<body>
+  <div id="map" aria-label="Bản đồ tương tác"></div>
+  <script>
+    const map = L.map('map', { zoomControl:false, tap:true, touchZoom:true, doubleClickZoom:true, attributionControl:false })
+      .setView([21.0285, 105.8542], 13);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      minZoom:3, maxZoom:19, attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+    const savedPlaces = L.layerGroup().addTo(map);
+    const nearbyPlaces = L.layerGroup().addTo(map);
+    const sharedPlaces = L.layerGroup().addTo(map);
+    let searchPin = null;
+    let routeLine = null;
+    window.clearPlaceMarkers = function() { savedPlaces.clearLayers(); };
+    window.clearNearbyMarkers = function() { nearbyPlaces.clearLayers(); };
+    window.clearSharedMarkers = function() { sharedPlaces.clearLayers(); };
+    window.clearRoute = function() {
+      if (routeLine) map.removeLayer(routeLine);
+      routeLine = null;
+    };
+    window.showRoute = function(coordinates) {
+      window.clearRoute();
+      if (!coordinates || coordinates.length < 2) return;
+      routeLine = L.polyline(coordinates, {
+        color:'#1565C0', weight:7, opacity:1, lineCap:'round', lineJoin:'round'
+      }).addTo(map);
+      routeLine.bringToFront();
+      map.fitBounds(routeLine.getBounds(), {
+        paddingTopLeft:[28,90], paddingBottomRight:[28,170], maxZoom:16, animate:true
+      });
+    };
+    window.zoomIn = function() { map.setZoom(map.getZoom() + 1, { animate:true, duration:0.25 }); };
+    window.zoomOut = function() { map.setZoom(map.getZoom() - 1, { animate:true, duration:0.25 }); };
+    window.addPlaceMarker = function(placeSnapshot, latitude, longitude, title) {
+      const marker = L.marker([latitude, longitude]).addTo(savedPlaces).bindPopup(title);
+      marker.on('click', function() {
+        TapMap.onSavedPlaceTapped(placeSnapshot);
+      });
+    };
+    window.addNearbyMarker = function(index, latitude, longitude, title, subtitle) {
+      const icon = L.divIcon({
+        className:'tapmap-marker-icon',
+        html:'<div style="width:36px;height:36px;border-radius:50% 50% 50% 8px;transform:rotate(-45deg);background:#f27628;border:3px solid #fff;box-shadow:0 2px 8px #0006;color:#fff;font:bold 18px sans-serif;display:flex;align-items:center;justify-content:center"><span style="transform:rotate(45deg)">✦</span></div>',
+        iconSize:[40,40], iconAnchor:[20,34], popupAnchor:[0,-30]
+      });
+      const popup = document.createElement('div');
+      const heading = document.createElement('b');
+      const detail = document.createElement('div');
+      heading.textContent = title;
+      detail.textContent = subtitle;
+      popup.append(heading, detail);
+      const marker = L.marker([latitude, longitude], {icon}).addTo(nearbyPlaces).bindPopup(popup);
+      marker.on('click', function() { TapMap.onNearbyPlaceTapped(index); });
+    };
+    window.addSharedMarker = function(index, latitude, longitude, title, subtitle) {
+      const icon = L.divIcon({
+        className:'tapmap-marker-icon',
+        html:'<div style="width:34px;height:34px;border-radius:50% 50% 50% 8px;transform:rotate(-45deg);background:#0b7657;border:3px solid #fff;box-shadow:0 2px 7px #0005;color:#fff;font:bold 17px sans-serif;display:flex;align-items:center;justify-content:center"><span style="transform:rotate(45deg)">♥</span></div>',
+        iconSize:[38,38], iconAnchor:[19,32], popupAnchor:[0,-30]
+      });
+      const popup = document.createElement('div');
+      const heading = document.createElement('b');
+      const detail = document.createElement('div');
+      heading.textContent = title;
+      detail.textContent = subtitle;
+      popup.append(heading, detail);
+      const marker = L.marker([latitude, longitude], {icon}).addTo(sharedPlaces).bindPopup(popup);
+      marker.on('click', function() { TapMap.onSharedPlaceTapped(index); });
+    };
+    let currentPin = null;
+    let currentAccuracy = null;
+    window.updateCurrentLocation = function(latitude, longitude, accuracy, centerMap) {
+      if (currentPin) map.removeLayer(currentPin);
+      if (currentAccuracy) map.removeLayer(currentAccuracy);
+      currentAccuracy = L.circle([latitude, longitude], {
+        radius:Math.min(Math.max(accuracy || 30, 20), 500), color:'#6554e8', weight:1,
+        fillColor:'#6554e8', fillOpacity:0.12
+      }).addTo(map);
+      currentPin = L.circleMarker([latitude, longitude], {
+        radius:8, color:'#ffffff', weight:3, fillColor:'#6554e8', fillOpacity:1
+      }).addTo(map).bindPopup('Vị trí của bạn');
+      if (centerMap) map.setView([latitude, longitude], 16, { animate:true });
+    };
+    window.clearCurrentLocation = function() {
+      if (currentPin) map.removeLayer(currentPin);
+      if (currentAccuracy) map.removeLayer(currentAccuracy);
+      currentPin = null;
+      currentAccuracy = null;
+    };
+    window.moveMapTo = function(latitude, longitude, label) {
+      map.flyTo([latitude, longitude], 16, { animate:true, duration:0.55 });
+      if (searchPin) map.removeLayer(searchPin);
+      searchPin = L.marker([latitude, longitude]).addTo(map).bindPopup(label).openPopup();
+    };
+    map.on('click', function(event) {
+      window.clearRoute();
+      if (searchPin) map.removeLayer(searchPin);
+      searchPin = L.marker(event.latlng).addTo(map).bindPopup('Địa điểm mới').openPopup();
+      TapMap.onMapTapped(event.latlng.lat, event.latlng.lng);
+    });
+  </script>
+</body>
+</html>

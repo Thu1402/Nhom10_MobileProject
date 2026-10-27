@@ -21,11 +21,11 @@ import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.storage.StorageException;
 import com.example.app.R;
-import com.example.app.data.AppData;
+import com.example.app.App;
 import com.example.app.data.FirebasePlaceRepository;
 import com.example.app.model.Place;
 import com.example.app.ui.Ui;
-import com.example.app.ui.PlaceFormUtils;
+import com.example.app.ui.Ui;
 import com.bumptech.glide.Glide;
 
 public class AddPlaceActivity extends BaseNavigationActivity {
@@ -59,11 +59,11 @@ public class AddPlaceActivity extends BaseNavigationActivity {
         page.addView(imageCard, Ui.margin(-1, 180, 0, 22, 0, 24, this));
         nameInput = Ui.input(this, "Tên địa điểm", false);
         categoryInput = Ui.input(this, "Danh mục", false);
-        PlaceFormUtils.setupCategoryDropdown(this, categoryInput, "");
+        Ui.setupCategoryDropdown(this, categoryInput, "");
         addressInput = Ui.input(this, "Địa chỉ", false);
         descriptionInput = Ui.input(this, "Mô tả địa điểm", true);
         tagsInput = Ui.input(this, "Tag", false);
-        PlaceFormUtils.bindTagPrefixing(tagsInput.getEditText());
+        Ui.bindTagPrefixing(tagsInput.getEditText());
         String mapAddress = getIntent().getStringExtra("MAP_ADDRESS");
         if (mapAddress != null && !mapAddress.trim().isEmpty()) {
             TextInputEditText addressField = (TextInputEditText) addressInput.getEditText();
@@ -92,7 +92,7 @@ public class AddPlaceActivity extends BaseNavigationActivity {
         String category = value(categoryInput);
         String address = value(addressInput);
         String description = value(descriptionInput);
-        String tags = PlaceFormUtils.normalizeTags(value(tagsInput));
+        String tags = Ui.normalizeTags(value(tagsInput));
         if (name.isEmpty() || category.isEmpty() || address.isEmpty()) {
             Toast.makeText(this, "Nhập tên, danh mục và địa chỉ.", Toast.LENGTH_SHORT).show();
             return;

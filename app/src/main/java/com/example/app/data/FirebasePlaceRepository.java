@@ -11,11 +11,13 @@ import android.util.Log;
 import android.util.Base64;
 
 import com.example.app.model.Place;
+import com.example.app.App;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.SetOptions;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
@@ -29,6 +31,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.io.InputStream;
 import java.io.ByteArrayOutputStream;
 
@@ -67,16 +71,26 @@ public final class FirebasePlaceRepository {
             callback.onError(new IllegalStateException("Firebase chưa được cấu hình. Thêm google-services.json vào APP/app."));
             return null;
         }
-        ListenerHolder holder = new ListenerHolder();
-        FirebaseSession.ensureSignedIn(context, new FirebaseSession.Callback() {
+        AtomicBoolean removed = new AtomicBoolean();
+        AtomicReference<ListenerRegistration> delegate = new AtomicReference<>();
+        ListenerRegistration registration = () -> {
+            removed.set(true);
+            ListenerRegistration current = delegate.get();
+            if (current != null) current.remove();
+        };
+        App.ensureSignedIn(context, new App.SessionCallback() {
             @Override public void onSuccess() {
-                if (holder.removed) return;
-                String ownerUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-                holder.delegate = FirebaseFirestore.getInstance().collection(COLLECTION)
-                        .whereEqualTo("ownerUid", ownerUid)
-                        .addSnapshotListener((snapshot, error) -> {
+                if (removed.get()) return;
+                String uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+                boolean admin = App.isAdmin();
+                Query query = FirebaseFirestore.getInstance().collection(COLLECTION);
+                if (!admin) query = query.whereEqualTo("ownerUid", uid);
+                delegate.set(query.addSnapshotListener((snapshot, error) -> {
                             if (error != null) {
-                                callback.onError(error);
+                                List<Place> cached = admin
+                                        ? LocalPlaceDatabase.getInstance(context).getAllPlaces()
+                                        : LocalPlaceDatabase.getInstance(context).getOwnerPlaces(uid);
+                                if (!cached.isEmpty()) callback.onPlaces(cached); else callback.onError(error);
                                 return;
                             }
                             List<Place> places = new ArrayList<>();
@@ -87,13 +101,15 @@ public final class FirebasePlaceRepository {
                                     if (!place.name.trim().isEmpty()) places.add(place);
                                 }
                             }
+                            if (admin) LocalPlaceDatabase.getInstance(context).replaceAllPlaces(places);
+                            else LocalPlaceDatabase.getInstance(context).replaceOwnerPlaces(uid, places);
                             callback.onPlaces(places);
-                        });
-                if (holder.removed) holder.delegate.remove();
+                        }));
+                if (removed.get()) delegate.get().remove();
             }
             @Override public void onError(Exception error) { callback.onError(error); }
         });
-        return holder;
+        return registration;
     }
 
     /** Loads only places whose IDs are present in the signed-in user's share inbox. */
@@ -102,7 +118,7 @@ public final class FirebasePlaceRepository {
             callback.onError(new IllegalStateException("Firebase chưa được cấu hình."));
             return;
         }
-        FirebaseSession.ensureSignedIn(context, new FirebaseSession.Callback() {
+        App.ensureSignedIn(context, new App.SessionCallback() {
             @Override public void onSuccess() {
                 List<Task<?>> requests = new ArrayList<>();
                 if (ids != null) {
@@ -149,11 +165,17 @@ public final class FirebasePlaceRepository {
             callback.onError(new IllegalStateException("Firebase chưa được cấu hình."));
             return null;
         }
-        ListenerHolder holder = new ListenerHolder();
-        FirebaseSession.ensureSignedIn(context, new FirebaseSession.Callback() {
+        AtomicBoolean removed = new AtomicBoolean();
+        AtomicReference<ListenerRegistration> delegate = new AtomicReference<>();
+        ListenerRegistration registration = () -> {
+            removed.set(true);
+            ListenerRegistration current = delegate.get();
+            if (current != null) current.remove();
+        };
+        App.ensureSignedIn(context, new App.SessionCallback() {
             @Override public void onSuccess() {
-                if (holder.removed) return;
-                holder.delegate = FirebaseFirestore.getInstance().collection(COLLECTION).document(placeId)
+                if (removed.get()) return;
+                delegate.set(FirebaseFirestore.getInstance().collection(COLLECTION).document(placeId)
                         .addSnapshotListener((document, error) -> {
                             if (error != null) callback.onError(error);
                             else if (document == null || !document.exists()) callback.onMissing();
@@ -162,12 +184,12 @@ public final class FirebasePlaceRepository {
                                 if (place.name.trim().isEmpty()) callback.onMissing();
                                 else callback.onPlace(place);
                             }
-                        });
-                if (holder.removed) holder.delegate.remove();
+                        }));
+                if (removed.get()) delegate.get().remove();
             }
             @Override public void onError(Exception error) { callback.onError(error); }
         });
-        return holder;
+        return registration;
     }
 
     public static void create(Context context, Place place, Uri imageUri, ResultCallback callback) {
@@ -175,7 +197,7 @@ public final class FirebasePlaceRepository {
             callback.onError(new IllegalStateException("Firebase chưa được cấu hình. Thêm google-services.json vào APP/app."));
             return;
         }
-        FirebaseSession.ensureSignedIn(context, new FirebaseSession.Callback() {
+        App.ensureSignedIn(context, new App.SessionCallback() {
             @Override public void onSuccess() {
                 String id = FirebaseFirestore.getInstance().collection(COLLECTION).document().getId();
                 uploadIfSelected(context, id, imageUri, imageUrl -> {
@@ -201,7 +223,7 @@ public final class FirebasePlaceRepository {
             callback.onError(new IllegalStateException("Địa điểm này chưa có mã Firebase."));
             return;
         }
-        FirebaseSession.ensureSignedIn(context, new FirebaseSession.Callback() {
+        App.ensureSignedIn(context, new App.SessionCallback() {
             @Override public void onSuccess() {
                 uploadIfSelected(context, place.id, imageUri, imageUrl -> {
                     Place updated = new Place(place.id, place.ownerId, place.name, place.category, place.address, place.distance,
@@ -215,6 +237,42 @@ public final class FirebasePlaceRepository {
             }
             @Override public void onError(Exception error) { callback.onError(error); }
         });
+    }
+
+    public static void delete(Context context, String placeId, ResultCallback callback) {
+        if (!isConfigured(context)) {
+            callback.onError(new IllegalStateException("Firebase chưa được cấu hình."));
+            return;
+        }
+        if (!App.isAdmin()) {
+            callback.onError(new SecurityException("Chỉ admin mới có thể xóa bài đăng của tài khoản khác."));
+            return;
+        }
+        FirebaseFirestore.getInstance().collection(COLLECTION).document(placeId).delete()
+                .addOnSuccessListener(unused -> {
+                    LocalPlaceDatabase.getInstance(context).deletePlace(placeId);
+                    callback.onSuccess();
+                })
+                .addOnFailureListener(callback::onError);
+    }
+
+    public static void deleteOwned(Context context, Place place, ResultCallback callback) {
+        if (!isConfigured(context)) {
+            callback.onError(new IllegalStateException("Firebase chưa được cấu hình."));
+            return;
+        }
+        String uid = FirebaseAuth.getInstance().getCurrentUser() == null
+                ? "" : FirebaseAuth.getInstance().getCurrentUser().getUid();
+        if (place == null || place.id.isEmpty() || !uid.equals(place.ownerId)) {
+            callback.onError(new SecurityException("Chỉ chủ sở hữu mới có thể xóa địa điểm này."));
+            return;
+        }
+        FirebaseFirestore.getInstance().collection(COLLECTION).document(place.id).delete()
+                .addOnSuccessListener(unused -> {
+                    LocalPlaceDatabase.getInstance(context).deletePlace(place.id);
+                    callback.onSuccess();
+                })
+                .addOnFailureListener(callback::onError);
     }
 
     private interface UploadSuccess { void accept(String imageUrl); }
@@ -412,13 +470,4 @@ public final class FirebasePlaceRepository {
         return null;
     }
 
-    private static final class ListenerHolder implements ListenerRegistration {
-        private volatile ListenerRegistration delegate;
-        private volatile boolean removed;
-        @Override public void remove() {
-            removed = true;
-            ListenerRegistration current = delegate;
-            if (current != null) current.remove();
-        }
-    }
 }

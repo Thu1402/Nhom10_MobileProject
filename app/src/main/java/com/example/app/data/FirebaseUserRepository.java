@@ -2,6 +2,7 @@ package com.example.app.data;
 
 import android.content.Context;
 import android.net.Uri;
+import com.example.app.App;
 import com.example.app.model.UserProfile;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
@@ -16,6 +17,8 @@ import java.util.List;
 import com.google.firebase.storage.FirebaseStorage;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public final class FirebaseUserRepository {
     public interface ProfileCallback {
@@ -28,28 +31,51 @@ public final class FirebaseUserRepository {
         void onError(Exception error);
     }
 
+    public interface BlockCallback { void onComplete(Exception error); }
+
     private FirebaseUserRepository() {}
+
+    public static void setBlocked(Context context, String uid, boolean blocked, BlockCallback callback) {
+        if (!com.example.app.App.isAdmin()) {
+            callback.onComplete(new SecurityException("Chỉ admin mới được khóa tài khoản."));
+            return;
+        }
+        Map<String, Object> update = new HashMap<>();
+        update.put("blocked", blocked);
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        WriteBatch batch = db.batch();
+        batch.update(db.collection("users").document(uid), update);
+        batch.update(db.collection("publicProfiles").document(uid), update);
+        batch.commit().addOnSuccessListener(unused -> callback.onComplete(null))
+                .addOnFailureListener(callback::onComplete);
+    }
 
     public static ListenerRegistration load(Context context, ProfileCallback callback) {
         if (!isConfigured(context)) {
             callback.onError(new IllegalStateException("Firebase chưa khởi tạo được."));
             return null;
         }
-        ListenerHolder holder = new ListenerHolder();
-        FirebaseSession.ensureSignedIn(context, new FirebaseSession.Callback() {
+        AtomicBoolean removed = new AtomicBoolean();
+        AtomicReference<ListenerRegistration> delegate = new AtomicReference<>();
+        ListenerRegistration registration = () -> {
+            removed.set(true);
+            ListenerRegistration current = delegate.get();
+            if (current != null) current.remove();
+        };
+        App.ensureSignedIn(context, new App.SessionCallback() {
             @Override public void onSuccess() {
-                if (holder.removed) return;
+                if (removed.get()) return;
                 String uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-                holder.delegate = FirebaseFirestore.getInstance().collection("users").document(uid)
+                delegate.set(FirebaseFirestore.getInstance().collection("users").document(uid)
                         .addSnapshotListener((document, error) -> {
                             if (error != null) callback.onError(error);
                             else if (document != null) callback.onSuccess(fromDocument(document));
-                        });
-                if (holder.removed) holder.delegate.remove();
+                        }));
+                if (removed.get()) delegate.get().remove();
             }
             @Override public void onError(Exception error) { callback.onError(error); }
         });
-        return holder;
+        return registration;
     }
 
     public static void save(Context context, UserProfile profile, Uri photo, ProfileCallback callback) {
@@ -57,7 +83,7 @@ public final class FirebaseUserRepository {
             callback.onError(new IllegalStateException("Firebase chưa khởi tạo được."));
             return;
         }
-        FirebaseSession.ensureSignedIn(context, new FirebaseSession.Callback() {
+        App.ensureSignedIn(context, new App.SessionCallback() {
             @Override public void onSuccess() {
                 FirebaseAuth auth = FirebaseAuth.getInstance();
                 String uid = auth.getCurrentUser().getUid();
@@ -87,12 +113,18 @@ public final class FirebaseUserRepository {
             callback.onError(new IllegalStateException("Firebase chưa khởi tạo được."));
             return null;
         }
-        ListenerHolder holder = new ListenerHolder();
-        FirebaseSession.ensureSignedIn(context, new FirebaseSession.Callback() {
+        AtomicBoolean removed = new AtomicBoolean();
+        AtomicReference<ListenerRegistration> delegate = new AtomicReference<>();
+        ListenerRegistration registration = () -> {
+            removed.set(true);
+            ListenerRegistration current = delegate.get();
+            if (current != null) current.remove();
+        };
+        App.ensureSignedIn(context, new App.SessionCallback() {
             @Override public void onSuccess() {
-                if (holder.removed) return;
+                if (removed.get()) return;
                 String currentUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-                holder.delegate = FirebaseFirestore.getInstance().collection("publicProfiles")
+                delegate.set(FirebaseFirestore.getInstance().collection("publicProfiles")
                         .addSnapshotListener((snapshot, error) -> {
                             if (error != null) {
                                 callback.onError(error);
@@ -108,12 +140,12 @@ public final class FirebaseUserRepository {
                                 }
                             }
                             callback.onSuccess(users);
-                        });
-                if (holder.removed) holder.delegate.remove();
+                        }));
+                if (removed.get()) delegate.get().remove();
             }
             @Override public void onError(Exception error) { callback.onError(error); }
         });
-        return holder;
+        return registration;
     }
 
     private static void writeProfile(String uid, UserProfile profile, String imageUrl, ProfileCallback callback) {
@@ -141,7 +173,7 @@ public final class FirebaseUserRepository {
 
     private static UserProfile fromDocument(DocumentSnapshot document) {
         return new UserProfile(document.getId(), string(document, "name"), string(document, "username"),
-                string(document, "bio"), string(document, "imageUrl"));
+                string(document, "bio"), string(document, "imageUrl"), Boolean.TRUE.equals(document.getBoolean("blocked")));
     }
 
     private static String string(DocumentSnapshot document, String field) {
@@ -151,16 +183,6 @@ public final class FirebaseUserRepository {
 
     private static boolean isConfigured(Context context) {
         return !FirebaseApp.getApps(context.getApplicationContext()).isEmpty();
-    }
-
-    private static final class ListenerHolder implements ListenerRegistration {
-        private volatile ListenerRegistration delegate;
-        private volatile boolean removed;
-        @Override public void remove() {
-            removed = true;
-            ListenerRegistration current = delegate;
-            if (current != null) current.remove();
-        }
     }
 
 }
