@@ -1,3 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">push</string>
+    <string name="app_name">TapMap</string>
+    <string name="nav_home">Khám phá</string>
+    <string name="nav_map">Bản đồ</string>
+    <string name="nav_add"> </string>
+    <string name="nav_friends">Bạn bè</string>
+    <string name="nav_profile">Hồ sơ</string>
+    <string name="place_image">Ảnh địa điểm</string>
 </resources>

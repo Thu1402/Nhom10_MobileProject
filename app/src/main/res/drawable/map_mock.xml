@@ -1,0 +1,47 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="393dp"
+    android:height="850dp"
+    android:viewportWidth="393"
+    android:viewportHeight="850">
+
+    <!-- Nền -->
+    <path
+        android:fillColor="#E9EBDD"
+        android:pathData="M0,0 H393 V850 H0 Z"/>
+
+    <!-- Khu vực màu xanh nhạt -->
+    <path
+        android:fillColor="#D5E4E2"
+        android:pathData="M220,80 C300,40 390,100 410,250 L390,520 C330,590 250,500 220,400 C180,300 170,160 220,80 Z"/>
+
+    <!-- Khu vực cây xanh -->
+    <path
+        android:fillColor="#D8E7CB"
+        android:pathData="M-30,200 C30,100 120,150 130,250 C140,330 70,370 -20,350 Z"/>
+
+    <path
+        android:fillColor="#D8E7CB"
+        android:pathData="M300,500 C370,450 420,530 410,650 C390,720 300,700 270,630 Z"/>
+
+    <!-- Đường giao thông trắng -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M-20,170 L413,210 L413,224 L-20,184 Z"/>
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M-20,430 L413,320 L413,338 L-20,448 Z"/>
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M250,-20 L270,-20 L120,850 L100,850 Z"/>
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M220,80 L235,70 L413,440 L413,470 Z"/>
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M-20,520 L413,570 L413,585 L-20,535 Z"/>
+
+</vector>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="BottomNavIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">@color/violet_soft</item>
+    </style>
+    <style name="BottomNavLabel">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:textSize">10sp</item>
+    </style>
+</resources>
