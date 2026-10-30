@@ -85,64 +85,22 @@ public class HomeActivity extends BaseNavigationActivity {
                 renderResults();
             }
         });
-        if (App.isAdmin()) {
-            sharesLoaded = true;
-        } else {
-            sharesListener = FirebaseShareRepository.listenReceived(this,
-                    new FirebaseShareRepository.ReceivedCallback() {
-                        @Override public void onResult(List<Place> shares) {
-                            receivedShares.clear();
-                            receivedShares.addAll(shares);
-                            List<String> ids = new ArrayList<>();
-                            for (Place share : shares) if (!share.id.isEmpty()) ids.add(share.id);
-                            FirebasePlaceRepository.loadByIds(HomeActivity.this, ids,
-                                    new FirebasePlaceRepository.PlacesCallback() {
-                                        @Override public void onPlaces(List<Place> places) {
-                                            App.SHARED_PLACES.clear();
-                                            App.SHARED_PLACES.addAll(places);
-                                            sharesLoaded = true;
-                                            sharesLoadFailed = false;
-                                            renderResults();
-                                        }
-                                        @Override public void onError(Exception error) {
-                                            sharesLoaded = true;
-                                            sharesLoadFailed = true;
-                                            renderResults();
-                                        }
-                                    });
-                        }
-                        @Override public void onError(Exception error) {
-                            sharesLoaded = true;
-                            sharesLoadFailed = true;
-                            renderResults();
-                        }
-                    });
-        }
     }
 
     private void renderResults() {
         if (results == null) return;
         results.removeAllViews();
-        boolean admin = App.isAdmin();
-        if (!placesLoaded || (!admin && !sharesLoaded)) return;
-        if (admin && placesLoadFailed) {
+        if (!placesLoaded) return;
+        if (placesLoadFailed) {
             results.addView(Ui.text(this, "Không tải được địa điểm.",
-                    13, Ui.color(this, R.color.muted), false));
-            return;
-        }
-        if (!admin && sharesLoadFailed) {
-            results.addView(Ui.text(this, "Không tải được mục chia sẻ.",
                     13, Ui.color(this, R.color.muted), false));
             return;
         }
         String query = searchField == null || searchField.getText() == null
                 ? "" : searchField.getText().toString().trim().toLowerCase(java.util.Locale.ROOT);
-        List<Place> visiblePlaces = admin ? App.PLACES : App.SHARED_PLACES;
         Set<String> filterCategories = new LinkedHashSet<>();
-        for (Place place : visiblePlaces) {
-            filterCategories.add(place.category == null || place.category.trim().isEmpty()
-                    ? "Khác" : place.category.trim());
-        }
+        for (Place place : App.PLACES) filterCategories.add(place.category == null || place.category.trim().isEmpty()
+                ? "Khác" : place.category.trim());
         for (Place place : fallbackPlaces) {
             String category = place.category == null || place.category.trim().isEmpty()
                     ? "Khác" : place.category.trim();
@@ -150,22 +108,19 @@ public class HomeActivity extends BaseNavigationActivity {
         }
         renderCategoryFilters(filterCategories);
         List<Place> matches = new ArrayList<>();
-        for (Place place : visiblePlaces) {
-            String category = place.category == null || place.category.trim().isEmpty()
-                    ? "Khác" : place.category.trim();
+        for (Place place : App.PLACES) {
+            String category = place.category == null || place.category.trim().isEmpty() ? "Khác" : place.category.trim();
             String searchable = (place.name + " " + category + " " + place.address + " " + place.tags)
                     .toLowerCase(java.util.Locale.ROOT);
             if (("Tất cả".equals(selectedCategory) || selectedCategory.equals(category))
                     && (query.isEmpty() || searchable.contains(query))) matches.add(place);
         }
         if (!matches.isEmpty()) {
-            results.addView(sectionTitle(admin ? "Toàn bộ địa điểm" : "Địa điểm được chia sẻ",
-                            matches.size() + " nơi"),
+            results.addView(sectionTitle("Địa điểm cộng đồng", matches.size() + " nơi"),
                     Ui.margin(-1, -2, 0, 0, 0, 10, this));
             for (Place place : matches) {
-                int index = visiblePlaces.indexOf(place);
-                results.addView(new PlaceCardView(this, place, true, admin,
-                        view -> { if (admin) open(index); else openShared(index); }),
+                int position = App.PLACES.indexOf(place);
+                results.addView(new PlaceCardView(this, place, true, view -> open(position)),
                         Ui.margin(-1, 104, 0, 0, 0, 10, this));
             }
         }
@@ -178,6 +133,20 @@ public class HomeActivity extends BaseNavigationActivity {
                     : "Không tìm thấy địa điểm phù hợp.",
                     14, Ui.color(this, R.color.muted), false), Ui.margin(-1, -2, 0, 8, 0, 0, this));
         }
+    }
+
+    private Map<String, List<Integer>> groupSharedPlaces(Set<String> sharedPlaceIds) {
+        Map<String, List<Integer>> groups = new LinkedHashMap<>();
+        Set<String> addedIds = new HashSet<>();
+        for (int i = 0; i < App.SHARED_PLACES.size(); i++) {
+            Place place = App.SHARED_PLACES.get(i);
+            if (!sharedPlaceIds.contains(place.id) || !addedIds.add(place.id)) continue;
+            String category = place.category == null || place.category.trim().isEmpty()
+                    ? "Khác" : place.category.trim();
+            if (!groups.containsKey(category)) groups.put(category, new ArrayList<>());
+            groups.get(category).add(i);
+        }
+        return groups;
     }
 
     private void renderCategoryFilters(Set<String> categories) {
@@ -300,7 +269,6 @@ public class HomeActivity extends BaseNavigationActivity {
     @Override protected void onDestroy() {
         searchRenderHandler.removeCallbacks(pendingSearchRender);
         if (placesListener != null) placesListener.remove();
-        if (sharesListener != null) sharesListener.remove();
         super.onDestroy();
     }
 }

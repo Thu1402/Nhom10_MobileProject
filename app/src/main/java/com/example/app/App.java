@@ -8,13 +8,17 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 
 public class App extends Application {
-    public interface SessionCallback { void onSuccess(); void onError(Exception error); }
+    public interface SessionCallback {
+        void onSuccess();
+        void onError(Exception error);
+    }
+
     public static final List<Place> PLACES = new ArrayList<>();
     public static final List<Place> SHARED_PLACES = new ArrayList<>();
     private static Task<AuthResult> pendingSignIn;
@@ -35,6 +39,16 @@ public class App extends Application {
         Task<AuthResult> task;
         synchronized (App.class) {
             if (auth.getCurrentUser() != null) { callback.onSuccess(); return; }
+        if (auth.getCurrentUser() != null) {
+            callback.onSuccess();
+            return;
+        }
+        Task<AuthResult> task;
+        synchronized (App.class) {
+            if (auth.getCurrentUser() != null) {
+                callback.onSuccess();
+                return;
+            }
             if (pendingSignIn == null || (pendingSignIn.isComplete() && !pendingSignIn.isSuccessful())) {
                 pendingSignIn = auth.signInAnonymously();
             }
@@ -43,6 +57,9 @@ public class App extends Application {
         task.addOnSuccessListener(result -> callback.onSuccess())
                 .addOnFailureListener(error -> {
                     synchronized (App.class) { if (pendingSignIn == task) pendingSignIn = null; }
+                    synchronized (App.class) {
+                        if (pendingSignIn == task) pendingSignIn = null;
+                    }
                     callback.onError(error);
                 });
     }

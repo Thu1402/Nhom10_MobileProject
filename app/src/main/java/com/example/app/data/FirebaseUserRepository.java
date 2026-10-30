@@ -1,8 +1,10 @@
 package com.example.app.data;
 
+import com.example.app.App;
 import android.content.Context;
 import android.net.Uri;
-import com.example.app.App;
+import android.os.Handler;
+import android.os.Looper;
 import com.example.app.model.UserProfile;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
@@ -15,6 +17,8 @@ import com.google.firebase.firestore.WriteBatch;
 import java.util.ArrayList;
 import java.util.List;
 import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageMetadata;
+import com.google.firebase.storage.StorageReference;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -36,8 +40,8 @@ public final class FirebaseUserRepository {
     private FirebaseUserRepository() {}
 
     public static void setBlocked(Context context, String uid, boolean blocked, BlockCallback callback) {
-        if (!com.example.app.App.isAdmin()) {
-            callback.onComplete(new SecurityException("Chỉ admin mới được khóa tài khoản."));
+        if (!App.isAdmin()) {
+            callback.onComplete(new SecurityException("Chỉ quản trị viên mới được khóa tài khoản."));
             return;
         }
         Map<String, Object> update = new HashMap<>();
@@ -57,25 +61,25 @@ public final class FirebaseUserRepository {
         }
         AtomicBoolean removed = new AtomicBoolean();
         AtomicReference<ListenerRegistration> delegate = new AtomicReference<>();
-        ListenerRegistration registration = () -> {
-            removed.set(true);
-            ListenerRegistration current = delegate.get();
-            if (current != null) current.remove();
-        };
         App.ensureSignedIn(context, new App.SessionCallback() {
             @Override public void onSuccess() {
                 if (removed.get()) return;
                 String uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-                delegate.set(FirebaseFirestore.getInstance().collection("users").document(uid)
+                ListenerRegistration registration = FirebaseFirestore.getInstance().collection("users").document(uid)
                         .addSnapshotListener((document, error) -> {
                             if (error != null) callback.onError(error);
                             else if (document != null) callback.onSuccess(fromDocument(document));
-                        }));
-                if (removed.get()) delegate.get().remove();
+                        });
+                delegate.set(registration);
+                if (removed.get()) registration.remove();
             }
             @Override public void onError(Exception error) { callback.onError(error); }
         });
-        return registration;
+        return () -> {
+            removed.set(true);
+            ListenerRegistration registration = delegate.get();
+            if (registration != null) registration.remove();
+        };
     }
 
     public static void save(Context context, UserProfile profile, Uri photo, ProfileCallback callback) {
@@ -91,21 +95,44 @@ public final class FirebaseUserRepository {
                     writeProfile(uid, profile, profile.imageUrl, callback);
                     return;
                 }
-                FirebaseStorage.getInstance().getReference()
-                        .child("users/" + uid + "/profile/avatar")
-                        .putFile(photo)
-                        .continueWithTask(task -> {
-                            if (!task.isSuccessful()) throw task.getException() == null
-                                    ? new IllegalStateException("Không thể tải ảnh đại diện lên Firebase Storage")
-                                    : task.getException();
-                            return FirebaseStorage.getInstance().getReference()
-                                    .child("users/" + uid + "/profile/avatar").getDownloadUrl();
-                        })
-                        .addOnSuccessListener(url -> writeProfile(uid, profile, url.toString(), callback))
-                        .addOnFailureListener(callback::onError);
+                try {
+                    String contentType = context.getContentResolver().getType(photo);
+                    if (contentType == null || !contentType.startsWith("image/")) contentType = "image/jpeg";
+                    StorageMetadata metadata = new StorageMetadata.Builder().setContentType(contentType).build();
+                    StorageReference avatar = FirebaseStorage.getInstance().getReference()
+                            .child("users/" + uid + "/profile/avatar");
+                    avatar.putFile(photo, metadata)
+                            .continueWithTask(task -> {
+                                if (!task.isSuccessful()) throw task.getException() == null
+                                        ? new IllegalStateException("Không thể tải ảnh đại diện lên Firebase Storage")
+                                        : task.getException();
+                                return avatar.getDownloadUrl();
+                            })
+                            .addOnSuccessListener(url -> writeProfile(uid, profile, url.toString(), callback))
+                            .addOnFailureListener(storageError -> saveCompressedPhoto(context, photo, uid,
+                                    profile, callback, storageError));
+                } catch (Exception storageError) {
+                    saveCompressedPhoto(context, photo, uid, profile, callback, storageError);
+                }
             }
             @Override public void onError(Exception error) { callback.onError(error); }
         });
+    }
+
+    private static void saveCompressedPhoto(Context context, Uri photo, String uid, UserProfile profile,
+                                            ProfileCallback callback, Exception storageError) {
+        android.util.Log.w("FirebaseUserRepository",
+                "Profile photo Storage upload failed; saving a compressed copy in Firestore", storageError);
+        Handler main = new Handler(Looper.getMainLooper());
+        new Thread(() -> {
+            try {
+                String dataUrl = FirebasePlaceRepository.compressAsDataUrl(context, photo);
+                main.post(() -> writeProfile(uid, profile, dataUrl, callback));
+            } catch (Exception imageError) {
+                imageError.addSuppressed(storageError);
+                main.post(() -> callback.onError(imageError));
+            }
+        }, "profile-photo-firestore-fallback").start();
     }
 
     public static ListenerRegistration listOtherUsers(Context context, UsersCallback callback) {
@@ -115,16 +142,11 @@ public final class FirebaseUserRepository {
         }
         AtomicBoolean removed = new AtomicBoolean();
         AtomicReference<ListenerRegistration> delegate = new AtomicReference<>();
-        ListenerRegistration registration = () -> {
-            removed.set(true);
-            ListenerRegistration current = delegate.get();
-            if (current != null) current.remove();
-        };
         App.ensureSignedIn(context, new App.SessionCallback() {
             @Override public void onSuccess() {
                 if (removed.get()) return;
                 String currentUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-                delegate.set(FirebaseFirestore.getInstance().collection("publicProfiles")
+                ListenerRegistration registration = FirebaseFirestore.getInstance().collection("publicProfiles")
                         .addSnapshotListener((snapshot, error) -> {
                             if (error != null) {
                                 callback.onError(error);
@@ -140,12 +162,17 @@ public final class FirebaseUserRepository {
                                 }
                             }
                             callback.onSuccess(users);
-                        }));
-                if (removed.get()) delegate.get().remove();
+                        });
+                delegate.set(registration);
+                if (removed.get()) registration.remove();
             }
             @Override public void onError(Exception error) { callback.onError(error); }
         });
-        return registration;
+        return () -> {
+            removed.set(true);
+            ListenerRegistration registration = delegate.get();
+            if (registration != null) registration.remove();
+        };
     }
 
     private static void writeProfile(String uid, UserProfile profile, String imageUrl, ProfileCallback callback) {

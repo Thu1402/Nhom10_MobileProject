@@ -25,7 +25,7 @@ import com.example.app.App;
 import com.example.app.data.FirebasePlaceRepository;
 import com.example.app.model.Place;
 import com.example.app.ui.Ui;
-import com.example.app.ui.Ui;
+
 import com.bumptech.glide.Glide;
 
 public class AddPlaceActivity extends BaseNavigationActivity {

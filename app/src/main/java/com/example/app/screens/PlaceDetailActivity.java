@@ -21,7 +21,7 @@ import com.example.app.App;
 import com.example.app.data.FirebasePlaceRepository;
 import com.example.app.model.Place;
 import com.example.app.ui.Ui;
-import com.example.app.ui.Ui;
+
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
@@ -171,23 +171,6 @@ public class PlaceDetailActivity extends AppCompatActivity {
         body.addView(Ui.text(this, place.name, 28, Ui.color(this, R.color.ink), true), Ui.margin(-1, -2, 0, 5, 0, 0, this));
         String addressLine = "⌖  " + place.address + (place.distance.isEmpty() ? "" : "  ·  " + place.distance);
         body.addView(Ui.text(this, addressLine, 11, Ui.color(this, R.color.muted), false), Ui.margin(-1, -2, 0, 8, 0, 18, this));
-        if (App.isAdmin() && !place.ownerId.isEmpty()) {
-            TextView author = Ui.text(this, "Tác giả: Đang tải…", 12, Ui.color(this, R.color.ink), false);
-            body.addView(author, Ui.margin(-1, -2, 0, 0, 0, 14, this));
-            FirebaseFirestore.getInstance().collection("publicProfiles").document(place.ownerId).get()
-                    .addOnSuccessListener(profile -> {
-                        if (author.getParent() != body) return;
-                        String username = profile.getString("username");
-                        String name = profile.getString("name");
-                        String account = username == null || username.trim().isEmpty()
-                                ? name : "@" + username.trim();
-                        if (account == null || account.trim().isEmpty()) account = place.ownerId;
-                        author.setText("Tác giả: " + account);
-                    })
-                    .addOnFailureListener(error -> {
-                        if (author.getParent() == body) author.setText("Tác giả: " + place.ownerId);
-                    });
-        }
         body.addView(Ui.text(this, Ui.tagsForDisplay(place.tags), 12, Ui.color(this, R.color.violet), true), Ui.margin(-1, -2, 0, 0, 0, 18, this));
         body.addView(Ui.text(this, "Về địa điểm này", 17, Ui.color(this, R.color.ink), true));
         body.addView(Ui.text(this, place.description, 13, Ui.color(this, R.color.muted), false), Ui.margin(-1, -2, 0, 8, 0, 24, this));
@@ -211,14 +194,12 @@ public class PlaceDetailActivity extends AppCompatActivity {
                                 for (int i = App.PLACES.size() - 1; i >= 0; i--) {
                                     if (place.id.equals(App.PLACES.get(i).id)) App.PLACES.remove(i);
                                 }
-                                Toast.makeText(PlaceDetailActivity.this,
-                                        "Đã xóa bài đăng.", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(PlaceDetailActivity.this, "Đã xóa bài đăng.", Toast.LENGTH_SHORT).show();
                                 finish();
                             }
                             @Override public void onError(Exception error) {
                                 Toast.makeText(PlaceDetailActivity.this,
-                                        "Không xóa được bài đăng. Kiểm tra kết nối và Firestore Rules.",
-                                        Toast.LENGTH_LONG).show();
+                                        "Không xóa được bài đăng. Kiểm tra kết nối và Firestore Rules.", Toast.LENGTH_LONG).show();
                             }
                         }))
                 .show());

@@ -1,5 +1,6 @@
 package com.example.app.data;
 
+import com.example.app.App;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -30,6 +31,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -73,24 +76,15 @@ public final class FirebasePlaceRepository {
         }
         AtomicBoolean removed = new AtomicBoolean();
         AtomicReference<ListenerRegistration> delegate = new AtomicReference<>();
-        ListenerRegistration registration = () -> {
-            removed.set(true);
-            ListenerRegistration current = delegate.get();
-            if (current != null) current.remove();
-        };
         App.ensureSignedIn(context, new App.SessionCallback() {
             @Override public void onSuccess() {
                 if (removed.get()) return;
-                String uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-                boolean admin = App.isAdmin();
-                Query query = FirebaseFirestore.getInstance().collection(COLLECTION);
-                if (!admin) query = query.whereEqualTo("ownerUid", uid);
-                delegate.set(query.addSnapshotListener((snapshot, error) -> {
+                ListenerRegistration registration = FirebaseFirestore.getInstance().collection(COLLECTION)
+                        .addSnapshotListener((snapshot, error) -> {
                             if (error != null) {
-                                List<Place> cached = admin
-                                        ? LocalPlaceDatabase.getInstance(context).getAllPlaces()
-                                        : LocalPlaceDatabase.getInstance(context).getOwnerPlaces(uid);
-                                if (!cached.isEmpty()) callback.onPlaces(cached); else callback.onError(error);
+                                List<Place> cached = LocalPlaceDatabase.getInstance(context).getAllPlaces();
+                                if (!cached.isEmpty()) callback.onPlaces(cached);
+                                else callback.onError(error);
                                 return;
                             }
                             List<Place> places = new ArrayList<>();
@@ -101,15 +95,19 @@ public final class FirebasePlaceRepository {
                                     if (!place.name.trim().isEmpty()) places.add(place);
                                 }
                             }
-                            if (admin) LocalPlaceDatabase.getInstance(context).replaceAllPlaces(places);
-                            else LocalPlaceDatabase.getInstance(context).replaceOwnerPlaces(uid, places);
+                            LocalPlaceDatabase.getInstance(context).replaceAllPlaces(places);
                             callback.onPlaces(places);
-                        }));
-                if (removed.get()) delegate.get().remove();
+                        });
+                delegate.set(registration);
+                if (removed.get()) registration.remove();
             }
             @Override public void onError(Exception error) { callback.onError(error); }
         });
-        return registration;
+        return () -> {
+            removed.set(true);
+            ListenerRegistration registration = delegate.get();
+            if (registration != null) registration.remove();
+        };
     }
 
     /** Loads only places whose IDs are present in the signed-in user's share inbox. */
@@ -151,9 +149,17 @@ public final class FirebasePlaceRepository {
                                     if (!place.name.trim().isEmpty()) shared.add(place);
                                 }
                             }
+                            for (Place place : shared) LocalPlaceDatabase.getInstance(context).put(place);
                             callback.onPlaces(shared);
                         })
-                        .addOnFailureListener(callback::onError);
+                        .addOnFailureListener(error -> {
+                            List<Place> cached = new ArrayList<>();
+                            if (ids != null) for (String id : ids) {
+                                Place place = LocalPlaceDatabase.getInstance(context).getPlace(id);
+                                if (place != null) cached.add(place);
+                            }
+                            if (!cached.isEmpty()) callback.onPlaces(cached); else callback.onError(error);
+                        });
             }
             @Override public void onError(Exception error) { callback.onError(error); }
         });
@@ -167,29 +173,35 @@ public final class FirebasePlaceRepository {
         }
         AtomicBoolean removed = new AtomicBoolean();
         AtomicReference<ListenerRegistration> delegate = new AtomicReference<>();
-        ListenerRegistration registration = () -> {
-            removed.set(true);
-            ListenerRegistration current = delegate.get();
-            if (current != null) current.remove();
-        };
         App.ensureSignedIn(context, new App.SessionCallback() {
             @Override public void onSuccess() {
                 if (removed.get()) return;
-                delegate.set(FirebaseFirestore.getInstance().collection(COLLECTION).document(placeId)
+                ListenerRegistration registration = FirebaseFirestore.getInstance().collection(COLLECTION).document(placeId)
                         .addSnapshotListener((document, error) -> {
-                            if (error != null) callback.onError(error);
+                            if (error != null) {
+                                Place cached = LocalPlaceDatabase.getInstance(context).getPlace(placeId);
+                                if (cached != null) callback.onPlace(cached); else callback.onError(error);
+                            }
                             else if (document == null || !document.exists()) callback.onMissing();
                             else {
                                 Place place = fromDocument(document);
                                 if (place.name.trim().isEmpty()) callback.onMissing();
-                                else callback.onPlace(place);
+                                else {
+                                    LocalPlaceDatabase.getInstance(context).put(place);
+                                    callback.onPlace(place);
+                                }
                             }
-                        }));
-                if (removed.get()) delegate.get().remove();
+                        });
+                delegate.set(registration);
+                if (removed.get()) registration.remove();
             }
             @Override public void onError(Exception error) { callback.onError(error); }
         });
-        return registration;
+        return () -> {
+            removed.set(true);
+            ListenerRegistration registration = delegate.get();
+            if (registration != null) registration.remove();
+        };
     }
 
     public static void create(Context context, Place place, Uri imageUri, ResultCallback callback) {
@@ -251,25 +263,6 @@ public final class FirebasePlaceRepository {
         FirebaseFirestore.getInstance().collection(COLLECTION).document(placeId).delete()
                 .addOnSuccessListener(unused -> {
                     LocalPlaceDatabase.getInstance(context).deletePlace(placeId);
-                    callback.onSuccess();
-                })
-                .addOnFailureListener(callback::onError);
-    }
-
-    public static void deleteOwned(Context context, Place place, ResultCallback callback) {
-        if (!isConfigured(context)) {
-            callback.onError(new IllegalStateException("Firebase chưa được cấu hình."));
-            return;
-        }
-        String uid = FirebaseAuth.getInstance().getCurrentUser() == null
-                ? "" : FirebaseAuth.getInstance().getCurrentUser().getUid();
-        if (place == null || place.id.isEmpty() || !uid.equals(place.ownerId)) {
-            callback.onError(new SecurityException("Chỉ chủ sở hữu mới có thể xóa địa điểm này."));
-            return;
-        }
-        FirebaseFirestore.getInstance().collection(COLLECTION).document(place.id).delete()
-                .addOnSuccessListener(unused -> {
-                    LocalPlaceDatabase.getInstance(context).deletePlace(place.id);
                     callback.onSuccess();
                 })
                 .addOnFailureListener(callback::onError);
@@ -362,7 +355,7 @@ public final class FirebasePlaceRepository {
         }, "place-image-firestore-fallback").start();
     }
 
-    private static String compressAsDataUrl(Context context, Uri imageUri) throws Exception {
+    static String compressAsDataUrl(Context context, Uri imageUri) throws Exception {
         BitmapFactory.Options bounds = new BitmapFactory.Options();
         bounds.inJustDecodeBounds = true;
         try (InputStream stream = context.getContentResolver().openInputStream(imageUri)) {

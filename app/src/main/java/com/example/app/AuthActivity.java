@@ -10,6 +10,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.FrameLayout;
 import android.view.Gravity;
+import android.app.Activity;
 import androidx.appcompat.app.AppCompatActivity;
 import com.example.app.App;
 import com.example.app.screens.HomeActivity;
@@ -18,6 +19,12 @@ import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.EmailAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -31,6 +38,7 @@ import java.util.Locale;
 import java.util.Map;
 
 public class AuthActivity extends AppCompatActivity {
+    private static final int GOOGLE_SIGN_IN_REQUEST = 7201;
     private EditText nameInput;
     private EditText phoneInput;
     private EditText usernameInput;
@@ -78,6 +86,44 @@ public class AuthActivity extends AppCompatActivity {
         submitButton.setOnClickListener(v -> submit());
         toggleButton.setOnClickListener(v -> setRegisterMode(!registerMode));
         setRegisterMode(false);
+        findViewById(R.id.btnAuthGoogle).setOnClickListener(v -> startGoogleSignIn());
+    }
+
+    private void startGoogleSignIn() {
+        int clientIdId = getResources().getIdentifier("default_web_client_id", "string", getPackageName());
+        if (clientIdId == 0) {
+            Toast.makeText(this, "Cần bật Google trong Firebase Authentication và tải lại google-services.json.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        GoogleSignInOptions options = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(clientIdId)).requestEmail().build();
+        startActivityForResult(GoogleSignIn.getClient(this, options).getSignInIntent(), GOOGLE_SIGN_IN_REQUEST);
+    }
+
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != GOOGLE_SIGN_IN_REQUEST || resultCode != Activity.RESULT_OK) return;
+        Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
+        try {
+            GoogleSignInAccount account = task.getResult(ApiException.class);
+            if (account == null || account.getIdToken() == null) {
+                Toast.makeText(this, "Google không trả về mã xác thực. Kiểm tra cấu hình OAuth.", Toast.LENGTH_LONG).show();
+                return;
+            }
+            setSubmitting(true, "Đang đăng nhập với Google...");
+            AuthCredential credential = GoogleAuthProvider.getCredential(account.getIdToken(), null);
+            FirebaseUser current = FirebaseAuth.getInstance().getCurrentUser();
+            if (current != null && current.isAnonymous()) {
+                current.linkWithCredential(credential).addOnSuccessListener(result -> openHome())
+                        .addOnFailureListener(error -> FirebaseAuth.getInstance().signInWithCredential(credential)
+                                .addOnSuccessListener(result -> openHome()).addOnFailureListener(failure -> showLoginError(authError(failure))));
+            } else {
+                FirebaseAuth.getInstance().signInWithCredential(credential).addOnSuccessListener(result -> openHome())
+                        .addOnFailureListener(error -> showLoginError(authError(error)));
+            }
+        } catch (ApiException error) {
+            showLoginError("Đăng nhập Google thất bại: " + error.getStatusCode());
+        }
     }
 
     private void setRegisterMode(boolean enabled) {
@@ -85,8 +131,10 @@ public class AuthActivity extends AppCompatActivity {
         registerFields.setVisibility(enabled ? View.VISIBLE : View.GONE);
         identifierInput.setVisibility(enabled ? View.GONE : View.VISIBLE);
         title.setText(enabled ? "Tạo tài khoản" : "Đăng nhập");
+        subtitle.setText(enabled
+                ? "Thông tin tài khoản"
+                : "Tên đăng nhập hoặc số điện thoại.");
         subtitle.setVisibility(enabled ? View.VISIBLE : View.GONE);
-        if (enabled) subtitle.setText("Thông tin tài khoản");
         submitButton.setText(enabled ? "Đăng ký" : "Đăng nhập");
         togglePrompt.setText(enabled ? "Đã có tài khoản?" : "Chưa có tài khoản?");
         toggleButton.setText(enabled ? "Đăng nhập" : "Đăng ký");
@@ -137,7 +185,42 @@ public class AuthActivity extends AppCompatActivity {
             return;
         }
         setSubmitting(true, "Đang đăng nhập...");
+        if ("admin".equals(username)) {
+            if (!"admin123".equals(password)) {
+                showLoginError("Mật khẩu admin không đúng.");
+                return;
+            }
+            signInAdmin();
+            return;
+        }
         signInWithAlias(usernameAlias(username), password);
+    }
+
+    private void signInAdmin() {
+        FirebaseAuth auth = FirebaseAuth.getInstance();
+        String alias = usernameAlias("admin");
+        auth.signInWithEmailAndPassword(alias, "admin123")
+                .addOnSuccessListener(result -> saveAdminProfile(result.getUser()))
+                .addOnFailureListener(signInError -> auth.createUserWithEmailAndPassword(alias, "admin123")
+                        .addOnSuccessListener(result -> saveAdminProfile(result.getUser()))
+                        .addOnFailureListener(createError -> showLoginError(
+                                "Không thể khởi tạo admin. Kiểm tra Firebase Authentication và kết nối mạng.")));
+    }
+
+    private void saveAdminProfile(FirebaseUser user) {
+        if (user == null) { showLoginError("Không lấy được tài khoản admin."); return; }
+        Map<String, Object> privateData = new HashMap<>();
+        privateData.put("uid", user.getUid()); privateData.put("name", "Admin");
+        privateData.put("username", "admin"); privateData.put("bio", ""); privateData.put("imageUrl", "");
+        privateData.put("role", "admin"); privateData.put("blocked", false);
+        Map<String, Object> publicData = new HashMap<>(privateData);
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        WriteBatch batch = db.batch();
+        batch.set(db.collection("users").document(user.getUid()), privateData, SetOptions.merge());
+        batch.set(db.collection("publicProfiles").document(user.getUid()), publicData, SetOptions.merge());
+        batch.commit().addOnSuccessListener(unused -> openHome())
+                .addOnFailureListener(error -> showLoginError(
+                        "Tài khoản admin đã xác thực nhưng chưa thể thiết lập quyền quản trị. Cập nhật firestore.rules rồi thử lại."));
     }
 
     private void signInUsingLookup(DocumentSnapshot document, String password) {
@@ -200,6 +283,11 @@ public class AuthActivity extends AppCompatActivity {
         }
         if (!validUsername(username)) {
             usernameInput.setError("Tên đăng nhập gồm 3–24 chữ, số, dấu chấm hoặc gạch dưới");
+            usernameInput.requestFocus();
+            return;
+        }
+        if ("admin".equals(username)) {
+            usernameInput.setError("Tên admin dành riêng cho quản trị viên");
             usernameInput.requestFocus();
             return;
         }
@@ -375,6 +463,24 @@ public class AuthActivity extends AppCompatActivity {
     }
 
     private void openHome() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) { showLoginError("Không tìm thấy phiên đăng nhập."); return; }
+        FirebaseFirestore.getInstance().collection("users").document(user.getUid()).get()
+                .addOnSuccessListener(document -> {
+                    if (Boolean.TRUE.equals(document.getBoolean("blocked"))) {
+                        FirebaseAuth.getInstance().signOut();
+                        showLoginError("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.");
+                        return;
+                    }
+                    launchHome();
+                })
+                .addOnFailureListener(error -> {
+                    FirebaseAuth.getInstance().signOut();
+                    showLoginError("Không thể kiểm tra trạng thái tài khoản. Hãy kết nối mạng và thử lại.");
+                });
+    }
+
+    private void launchHome() {
         App.PLACES.clear();
         App.SHARED_PLACES.clear();
         Intent intent = new Intent(this, HomeActivity.class)

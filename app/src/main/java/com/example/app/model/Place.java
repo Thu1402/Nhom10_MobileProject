@@ -12,6 +12,7 @@ public class Place {
     public final String tags;
     public final double latitude;
     public final double longitude;
+    // Optional transient fields reused by map/search/share UI entries.
     public String title;
     public String subtitle;
     public String openingHours = "";
