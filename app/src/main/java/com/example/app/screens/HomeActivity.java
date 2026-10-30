@@ -82,10 +82,7 @@ public class HomeActivity extends BaseNavigationActivity {
             @Override public void onError(Exception error) {
                 placesLoaded = true;
                 placesLoadFailed = true;
-                results.removeAllViews();
-                results.addView(Ui.text(HomeActivity.this,
-                        "Không tải được địa điểm.",
-                        13, Ui.color(HomeActivity.this, R.color.muted), false));
+                renderResults();
             }
         });
     }
@@ -209,7 +206,7 @@ public class HomeActivity extends BaseNavigationActivity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         for (Place place : recommendations) {
-            PlaceCardView card = new PlaceCardView(this, place, true,
+            PlaceCardView card = new PlaceCardView(this, place, true, false,
                     view -> openDemo(place));
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     Ui.dp(this, 286), Ui.dp(this, 104));

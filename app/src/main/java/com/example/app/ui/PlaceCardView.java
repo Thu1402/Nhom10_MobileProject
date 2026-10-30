@@ -10,10 +10,12 @@ import android.widget.TextView;
 import com.bumptech.glide.Glide;
 import com.google.android.material.card.MaterialCardView;
 import com.example.app.R;
+import com.example.app.App;
 import com.example.app.model.Place;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 public class PlaceCardView extends MaterialCardView {
-    public PlaceCardView(Context context, Place place, boolean compact, OnClickListener listener) {
+    public PlaceCardView(Context context, Place place, boolean compact, boolean showOwner, OnClickListener listener) {
         super(context);
         setRadius(Ui.dp(context, 20));
         setCardBackgroundColor(Color.WHITE);
@@ -48,6 +50,23 @@ public class PlaceCardView extends MaterialCardView {
         body.addView(category);
         body.addView(title, Ui.margin(-1, -2, 0, 4, 0, 0, context));
         body.addView(address, Ui.margin(-1, -2, 0, 5, 0, 0, context));
+        if (showOwner && App.isAdmin() && place.ownerId != null && !place.ownerId.isEmpty()) {
+            TextView owner = Ui.text(context, "Tác giả: Đang tải…", 8, Ui.color(context, R.color.muted), false);
+            body.addView(owner, Ui.margin(-1, -2, 0, 3, 0, 0, context));
+            FirebaseFirestore.getInstance().collection("publicProfiles").document(place.ownerId).get()
+                    .addOnSuccessListener(profile -> {
+                        if (owner.getParent() != body) return;
+                        String username = profile.getString("username");
+                        String name = profile.getString("name");
+                        String account = username == null || username.trim().isEmpty()
+                                ? name : "@" + username.trim();
+                        if (account == null || account.trim().isEmpty()) account = place.ownerId;
+                        owner.setText("Tác giả: " + account);
+                    })
+                    .addOnFailureListener(error -> {
+                        if (owner.getParent() == body) owner.setText("Tác giả: " + place.ownerId);
+                    });
+        }
         root.addView(body, new LinearLayout.LayoutParams(0, compact ? Ui.dp(context, 88) : ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         addView(root);
     }

@@ -35,6 +35,10 @@ public class App extends Application {
             return;
         }
         FirebaseAuth auth = FirebaseAuth.getInstance();
+        if (auth.getCurrentUser() != null) { callback.onSuccess(); return; }
+        Task<AuthResult> task;
+        synchronized (App.class) {
+            if (auth.getCurrentUser() != null) { callback.onSuccess(); return; }
         if (auth.getCurrentUser() != null) {
             callback.onSuccess();
             return;
@@ -52,6 +56,7 @@ public class App extends Application {
         }
         task.addOnSuccessListener(result -> callback.onSuccess())
                 .addOnFailureListener(error -> {
+                    synchronized (App.class) { if (pendingSignIn == task) pendingSignIn = null; }
                     synchronized (App.class) {
                         if (pendingSignIn == task) pendingSignIn = null;
                     }

@@ -23,6 +23,7 @@ import com.example.app.model.Place;
 import com.example.app.ui.Ui;
 
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 
 public class PlaceDetailActivity extends AppCompatActivity {
@@ -102,7 +103,7 @@ public class PlaceDetailActivity extends AppCompatActivity {
                     @Override public void onMissing() {
                         if (!isFinishing()) {
                             Toast.makeText(PlaceDetailActivity.this,
-                                    "Địa điểm này đã bị xóa khỏi Firebase.", Toast.LENGTH_SHORT).show();
+                                    "", Toast.LENGTH_SHORT).show();
                             finish();
                         }
                     }

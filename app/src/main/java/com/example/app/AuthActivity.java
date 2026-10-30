@@ -238,7 +238,31 @@ public class AuthActivity extends AppCompatActivity {
 
     private void signInWithAlias(String authAlias, String password) {
         FirebaseAuth.getInstance().signInWithEmailAndPassword(authAlias, password)
-                .addOnSuccessListener(result -> openHome())
+                .addOnSuccessListener(result -> {
+                    FirebaseUser user = result.getUser();
+                    if (user == null || user.isAnonymous()) {
+                        openHome();
+                        return;
+                    }
+                    FirebaseFirestore.getInstance().collection("users").document(user.getUid()).get()
+                            .addOnSuccessListener(document -> {
+                                if (Boolean.TRUE.equals(document.getBoolean("blocked"))) {
+                                    FirebaseAuth.getInstance().signOut();
+                                    setSubmitting(false, "Đăng nhập");
+                                    new androidx.appcompat.app.AlertDialog.Builder(this)
+                                            .setTitle("Tài khoản bị khóa")
+                                            .setMessage("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.")
+                                            .setPositiveButton("Đóng", (dialog, which) -> dialog.dismiss())
+                                            .show();
+                                } else {
+                                    openHome();
+                                }
+                            })
+                            .addOnFailureListener(error -> {
+                                FirebaseAuth.getInstance().signOut();
+                                showLoginError("Không thể kiểm tra trạng thái tài khoản. Hãy thử lại.");
+                            });
+                })
                 .addOnFailureListener(error -> showLoginError(authError(error)));
     }
 

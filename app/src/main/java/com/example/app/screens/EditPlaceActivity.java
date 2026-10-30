@@ -18,6 +18,7 @@ import com.example.app.model.Place;
 import com.example.app.ui.Ui;
 
 import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.storage.StorageException;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 
@@ -72,6 +73,34 @@ public class EditPlaceActivity extends AppCompatActivity {
         saveButton = Ui.primaryButton(this, "Lưu thay đổi");
         saveButton.setOnClickListener(view -> saveChanges());
         page.addView(saveButton, Ui.margin(-1, 54, 0, 8, 0, 0, this));
+        MaterialButton deleteButton = Ui.softButton(this, "Xóa bài đăng");
+        deleteButton.setTextColor(android.graphics.Color.rgb(180, 45, 45));
+        String currentUid = FirebaseAuth.getInstance().getCurrentUser() == null
+                ? "" : FirebaseAuth.getInstance().getCurrentUser().getUid();
+        if (place.id.isEmpty() || !currentUid.equals(place.ownerId)) deleteButton.setVisibility(android.view.View.GONE);
+        deleteButton.setOnClickListener(view -> new AlertDialog.Builder(this)
+                .setTitle("Xóa bài đăng?")
+                .setMessage("Bài đăng ‘" + place.name + "’ sẽ bị xóa vĩnh viễn.")
+                .setNegativeButton("Hủy", null)
+                .setPositiveButton("Xóa", (dialog, which) -> {
+                    deleteButton.setEnabled(false);
+                    FirebasePlaceRepository.deleteOwned(this, place, new FirebasePlaceRepository.ResultCallback() {
+                        @Override public void onSuccess() {
+                            for (int i = App.PLACES.size() - 1; i >= 0; i--) {
+                                if (place.id.equals(App.PLACES.get(i).id)) App.PLACES.remove(i);
+                            }
+                            Toast.makeText(EditPlaceActivity.this, "Đã xóa bài đăng.", Toast.LENGTH_SHORT).show();
+                            finish();
+                        }
+                        @Override public void onError(Exception error) {
+                            deleteButton.setEnabled(true);
+                            Toast.makeText(EditPlaceActivity.this,
+                                    "Không xóa được bài đăng. Kiểm tra kết nối và Firestore Rules.",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
+                }).show());
+        page.addView(deleteButton, Ui.margin(-1, 50, 0, 10, 0, 0, this));
         MaterialButton cancel = Ui.softButton(this, "Hủy");
         cancel.setOnClickListener(view -> finish());
         page.addView(cancel, Ui.margin(-1, 50, 0, 10, 0, 0, this));
@@ -102,7 +131,7 @@ public class EditPlaceActivity extends AppCompatActivity {
                     }
                     @Override public void onMissing() {
                         Toast.makeText(EditPlaceActivity.this,
-                                "Địa điểm này đã bị xóa khỏi Firebase.", Toast.LENGTH_SHORT).show();
+                                "", Toast.LENGTH_SHORT).show();
                         finish();
                     }
                     @Override public void onError(Exception error) {
